@@ -33,13 +33,13 @@ func (mw loggingMiddleware) {{$opid}}(ctx context.Context
 ( 
 {{- range $index, $return := .GetResponseTypeDefinitions -}}
 {{- if $index }}, {{end -}}
-{{ $return.Schema.GoType }}
+*{{ $return.Schema.GoType }}
 {{- end -}}
 , error) {
 {{- end }}
 	var err error
 	defer func(begin time.Time) {
-		var apiErr Error
+		var apiErr APIError
 		if errors.As(err, &apiErr) {
 		mw.logger.Log(
 			"method", "{{$opid}}",

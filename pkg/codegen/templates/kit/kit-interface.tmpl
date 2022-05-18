@@ -25,7 +25,7 @@ type Service interface {
 ( 
 {{- range $index, $return := .GetResponseTypeDefinitions -}}
 {{- if $index }}, {{end -}}
-{{ $return.Schema.GoType }}
+*{{ $return.Schema.GoType }}
 {{- end -}}
 , error)
 {{- end }}

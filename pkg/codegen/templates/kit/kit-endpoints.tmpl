@@ -12,7 +12,7 @@ req := request.({{(index .Bodies 0).Schema.GoType}})
 {{ if not .GetResponseTypeDefinitions }}
 
 if err := svc.{{$opid}}(ctx{{if or .AllParams .HasBody}}, req{{end}}); err != nil {
-return {{$opid}}Response{err.Error()}, nil
+return {{$opid}}Response{err.Error()}, err
 }
 return {{$opid}}Response{}, nil
 
@@ -22,17 +22,17 @@ res, err := svc.{{$opid}}(ctx, {{range $index, $param := .AllParams -}}
 req.{{- $param.GoName -}}
 {{- end -}})
 if err != nil {
-return {{$opid}}Response{res, err.Error()}, nil
+return nil, err
 }
-return {{$opid}}Response{res, ""}, nil
+return res, nil
 
 {{else}}
 
 res, err := svc.{{$opid}}(ctx, req)
 if err != nil {
-return {{$opid}}Response{res, err.Error()}, nil
+return nil, err
 }
-return {{$opid}}Response{res, ""}, nil
+return res, nil
 
 {{end}}
 }

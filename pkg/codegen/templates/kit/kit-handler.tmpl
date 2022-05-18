@@ -1,19 +1,99 @@
+func GetRouter(svc Service) *mux.Router {
+	 r := mux.NewRouter()
 {{range . -}}{{$opid := .OperationId}}
-func Make{{$opid}}Handler(svc Service) http.Handler {
+	 r.Handle("{{.Path}}", make{{$opid}}Handler(svc)).Methods("{{.Method}}")
+{{end}}
+	 r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	   w.WriteHeader(http.StatusNotFound)
+	   json.NewEncoder(w).Encode(Error(http.StatusNotFound, "not found"))
+	 })
+	 return r
+}
+
+{{range . -}}{{$opid := .OperationId}}
+func make{{$opid}}Handler(svc Service) http.Handler {
 return httptransport.NewServer(
 		make{{$opid}}Endpoint(svc),
+		{{ if .QueryParams }}
+		Decode{{$opid}}Request,
+		{{ else }}
 		decode{{$opid}}Request,
+		{{ end }}
 		encodeResponse,
+		httptransport.ServerErrorEncoder(encodeErrorResponse),
 	)
 }
 
 func decode{{$opid}}Request(ctx context.Context, r *http.Request) (interface{}, error) {
-return nil, nil
+
+{{ if .HasBody }}
+
+var body {{range $index, $body := .Bodies}}{{if eq $index 0}}{{$body.Schema.GoType}}{{end}}{{end}}
+if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+apiErr := APIError{Code: http.StatusBadRequest, Message: "decoding request body"}
+return nil, apiErr.Wrap(err)
+}
+return body, nil
+
+{{ else if .PathParams }}
+vars := mux.Vars(r)
+
+{{range .PathParams -}}
+{{if eq .Schema.GoType "int" }}
+{{if .Required }}
+{{.ParamName}}Str, ok := vars["{{.ParamName}}"]
+if !ok {
+   return nil, Error(http.StatusBadRequest, "missing required parameter '{{.ParamName}}'")
+}
+{{else}}
+{{.ParamName}}Str, ok := vars["{{.ParamName}}"]
+if !ok {
+{{.ParamName}}Str = "0"
+}
+{{end}}
+
+{{.ParamName}}, err := strconv.Atoi({{.ParamName}}Str)
+if err != nil {
+  return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
+}
+{{else }}
+{{.ParamName}}, ok := vars["{{.ParamName}}"]
+{{end}}
+{{end}}
+
+return {{$opid}}Request {
+{{range .PathParams -}}
+{{.GoName}}: {{.ParamName}},
+{{end}}
+}, nil
+
+{{ else if .QueryParams }}
+  return nil, Error(http.StatusNotImplemented, "Decode{{$opid}}Request must be implemented by developer")
+{{ else }}
+  return nil, Error(http.StatusNotImplemented, "not supported by the generator")
+{{ end }}
 }
 
-{{ end -}}
+{{ if .QueryParams }}
+// Decode{{$opid}}Request must be implemented by the developer (for now)
+var Decode{{$opid}}Request = decode{{$opid}}Request
+{{ end }}
+
+
+{{ end }}
 
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	return json.NewEncoder(w).Encode(response)
+}
+
+func encodeErrorResponse(_ context.Context, err error, w http.ResponseWriter) {
+	 var apiErr APIError
+	 if errors.As(err, &apiErr) {
+	 	w.WriteHeader(apiErr.Code)
+	 } else {
+	 	w.WriteHeader(http.StatusInternalServerError)
+		err = Error(http.StatusInternalServerError, err.Error())
+	 }
+	 json.NewEncoder(w).Encode(err)
 }
 

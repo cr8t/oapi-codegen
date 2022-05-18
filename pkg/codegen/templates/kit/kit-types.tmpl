@@ -1,22 +1,40 @@
-type Error struct {
+type APIError struct {
      Code int `json:"code,omitempty"`
      Message string `json:"message,omitempty"`
      err error
 }
 
-func (err Error) Error() string {
+func Error(code int, message string) error {
+     return APIError{Code: code, Message: message}
+}
+
+func Errorf(code int, format string, args ...interface{}) error {
+     return APIError{Code: code, Message: fmt.Sprintf(format, args...)}
+}
+
+func (err APIError) Error() string {
      if err.err != nil {
         return fmt.Sprintf("[%d] %s: %s", err.Code, err.Message, err.err)
      }
      return fmt.Sprintf("[%d] %s", err.Code, err.Message)
 }
 
-func (err Error) Wrap(towrap error) error {
+func (err APIError) MarshalJSON() ([]byte, error) {
+     var message string
+     if err.err != nil {
+        message = fmt.Sprintf("%s: %s", err.Message, err.err)
+     } else {
+       message = err.Message
+     }
+     return []byte(fmt.Sprintf(`{"code": %d, "message": "%s"}`, err.Code, message)), nil
+}
+
+func (err APIError) Wrap(towrap error) error {
      err.err = towrap
      return err
 }
 
-func (err Error) Unwrap() error {
+func (err APIError) Unwrap() error {
      return err.err
 }
 
