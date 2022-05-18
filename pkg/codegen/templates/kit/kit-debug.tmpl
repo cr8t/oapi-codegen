@@ -1,0 +1,11 @@
+{{range . -}}
+// -------- {{.OperationId}}
+// method = {{.Method}}
+// path = {{.Path}}
+// has body = {{ .HasBody }}
+// has response types = {{if .GetResponseTypeDefinitions}}yes{{else}}no{{end}}
+// has type defs = {{if .TypeDefinitions}}yes{{else}}no{{end}}
+// has params = {{if .AllParams}}yes{{else}}no{{end}}
+//
+//
+{{end}}

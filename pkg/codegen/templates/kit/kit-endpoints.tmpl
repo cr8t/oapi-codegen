@@ -1,0 +1,41 @@
+{{range . -}}{{$opid := .OperationId}}
+func make{{$opid}}Endpoint(svc Service) endpoint.Endpoint {
+return func(ctx context.Context, request interface{}) (interface{}, error) {
+
+{{if .AllParams}}
+req := request.({{$opid}}Request)
+{{else if .HasBody }}
+req := request.({{(index .Bodies 0).Schema.GoType}})
+{{end}}
+
+
+{{ if not .GetResponseTypeDefinitions }}
+
+if err := svc.{{$opid}}(ctx{{if or .AllParams .HasBody}}, req{{end}}); err != nil {
+return {{$opid}}Response{err.Error()}, nil
+}
+return {{$opid}}Response{}, nil
+
+{{else if .AllParams }}
+res, err := svc.{{$opid}}(ctx, {{range $index, $param := .AllParams -}}
+{{if $index}}, {{end -}}
+req.{{- $param.GoName -}}
+{{- end -}})
+if err != nil {
+return {{$opid}}Response{res, err.Error()}, nil
+}
+return {{$opid}}Response{res, ""}, nil
+
+{{else}}
+
+res, err := svc.{{$opid}}(ctx, req)
+if err != nil {
+return {{$opid}}Response{res, err.Error()}, nil
+}
+return {{$opid}}Response{res, ""}, nil
+
+{{end}}
+}
+}
+
+{{ end -}}

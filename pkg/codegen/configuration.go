@@ -26,6 +26,7 @@ type GenerateOptions struct {
 	EchoServer    bool `yaml:"echo-server,omitempty"`    // EchoServer specifies whether to generate echo server boilerplate
 	GinServer     bool `yaml:"gin-server,omitempty"`     // GinServer specifies whether to generate gin server boilerplate
 	GorillaServer bool `yaml:"gorilla-server,omitempty"` // GorillaServer specifies whether to generate Gorilla server boilerplate
+	KitServer     bool `yaml:"kit-server,omitempty"`     // KitServer specifies whether to generate Kit server boilerplate
 	Strict        bool `yaml:"strict-server,omitempty"`  // Strict specifies whether to generate strict server wrapper
 	Client        bool `yaml:"client,omitempty"`         // Client specifies whether to generate client boilerplate
 	Models        bool `yaml:"models,omitempty"`         // Models specifies whether to generate type definitions

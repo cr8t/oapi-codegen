@@ -1,0 +1,26 @@
+type Error struct {
+     Code int `json:"code,omitempty"`
+     Message string `json:"message,omitempty"`
+     err error
+}
+
+func (err Error) Error() string {
+     if err.err != nil {
+        return fmt.Sprintf("[%d] %s: %s", err.Code, err.Message, err.err)
+     }
+     return fmt.Sprintf("[%d] %s", err.Code, err.Message)
+}
+
+func (err Error) Wrap(towrap error) error {
+     err.err = towrap
+     return err
+}
+
+func (err Error) Unwrap() error {
+     return err.err
+}
+
+{{range .Types}}
+{{ with .Schema.Description }}{{ . }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}
+type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.TypeDecl}}
+{{end}}

@@ -1,0 +1,100 @@
+func WithMetricsMiddleware(namespace, subsystem string, next Service) Service {
+fieldKeys := []string{"method", "error"}
+	requestCount := kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "request_count",
+		Help:      "Number of requests received.",
+	}, fieldKeys)
+	requestLatency := kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "request_latency_microseconds",
+		Help:      "Total duration of requests in microseconds.",
+	}, fieldKeys)
+	countResult := kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "count_result",
+		Help:      "The result of each count method.",
+	}, []string{})
+	return metricsMiddleware{requestCount, requestLatency, countResult, next}
+	}
+
+type metricsMiddleware struct {
+	requestCount   metrics.Counter
+	requestLatency metrics.Histogram
+	countResult    metrics.Histogram
+	next           Service
+}
+
+{{range . -}}{{$opid := .OperationId}}
+
+func (mw metricsMiddleware) {{$opid}}(ctx context.Context
+
+{{- if .HasBody -}}
+
+{{range $index, $body := .Bodies -}}
+
+{{- if eq $index 0 -}}
+, data {{$body.Schema.GoType}}
+{{- end -}}
+
+{{- end -}}
+
+{{- else -}}
+
+{{range $index, $param := .AllParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+
+{{- end -}}
+
+) {{ if not .GetResponseTypeDefinitions}} error { {{else -}}
+( 
+{{- range $index, $return := .GetResponseTypeDefinitions -}}
+{{- if $index }}, {{end -}}
+{{ $return.Schema.GoType }}
+{{- end -}}
+, error) {
+{{- end }}
+	var err error
+	defer func(begin time.Time) {
+		lvs := []string{"method", "{{$opid}}", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+{{ if not .GetResponseTypeDefinitions }}
+
+{{ if .HasBody }}
+	err = mw.next.{{$opid}}(ctx, data)
+{{ else }}
+
+	err = mw.next.{{$opid}}(ctx, {{range $index, $param := .AllParams -}}
+{{if $index}}, {{end -}}
+{{- $param.ParamName -}}
+{{- end -}})
+
+{{ end }}
+	return err
+
+{{else if .AllParams }}
+
+	output, err := mw.next.{{$opid}}(ctx, {{range $index, $param := .AllParams -}}
+{{if $index}}, {{end -}}
+{{- $param.ParamName -}}
+{{- end -}})
+
+	return output, err
+	
+{{ else if .HasBody }}
+
+	output, err := mw.next.{{$opid}}(ctx, data)
+
+	return output, err
+	
+{{end}}
+
+}
+{{end}}

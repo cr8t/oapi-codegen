@@ -1,0 +1,42 @@
+{{range .}}{{$opid := .OperationId}}
+
+{{if not .HasBody }}
+{{if .TypeDefinitions }}
+
+{{range .TypeDefinitions}}
+// {{$opid}}Request defines parameters for {{$opid}}.
+type {{$opid}}Request {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.TypeDecl}}
+{{end}}
+
+{{else}}
+
+{{ if not .AllParams}}
+type {{$opid}}Request struct {}
+{{else}}
+type {{$opid}}Request struct {
+{{range $index, $param := .AllParams -}}
+{{ $param.GoName}} {{$param.Schema.GoType }}
+{{ end }}
+}
+{{end}}
+{{end}}
+
+
+{{end}}
+
+{{ if not .GetResponseTypeDefinitions}}
+type {{$opid}}Response struct {
+Error string `json:"error,omitempty"`
+}
+{{else}}
+
+{{ range .GetResponseTypeDefinitions }}
+type {{$opid}}Response struct {
+Response {{.Schema.TypeDecl}} `json:"response,omitempty"`
+Error string `json:"error,omitempty"`
+}
+{{end}}
+
+{{end}}
+
+{{end}}

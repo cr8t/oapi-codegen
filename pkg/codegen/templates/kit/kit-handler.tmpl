@@ -1,0 +1,19 @@
+{{range . -}}{{$opid := .OperationId}}
+func Make{{$opid}}Handler(svc Service) http.Handler {
+return httptransport.NewServer(
+		make{{$opid}}Endpoint(svc),
+		decode{{$opid}}Request,
+		encodeResponse,
+	)
+}
+
+func decode{{$opid}}Request(ctx context.Context, r *http.Request) (interface{}, error) {
+return nil, nil
+}
+
+{{ end -}}
+
+func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	return json.NewEncoder(w).Encode(response)
+}
+
