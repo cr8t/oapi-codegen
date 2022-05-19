@@ -17,6 +17,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"net/http"
 	"sort"
 	"strconv"
 	"strings"
@@ -592,7 +593,7 @@ func OperationDefinitions(swagger *openapi3.T) ([]OperationDefinition, error) {
 }
 
 func generateDefaultOperationID(opName string, requestPath string) (string, error) {
-	var operationId = strings.ToLower(opName)
+	operationId := strings.ToLower(opName)
 
 	if opName == "" {
 		return "", fmt.Errorf("operation name cannot be an empty string")
@@ -602,10 +603,32 @@ func generateDefaultOperationID(opName string, requestPath string) (string, erro
 		return "", fmt.Errorf("request path cannot be an empty string")
 	}
 
-	for _, part := range strings.Split(requestPath, "/") {
-		if part != "" {
-			operationId = operationId + "-" + part
+	parts := strings.Split(requestPath, "/")
+
+	if len(parts) == 2 {
+		switch opName {
+		case http.MethodGet:
+			if parts[1] == "healthz" {
+				operationId = "Health-Check"
+			} else {
+				operationId = "Read-" + parts[1] + "-List"
+			}
+		case http.MethodPost:
+			operationId = "Create-" + parts[1]
+		case http.MethodPut:
+			operationId = "Update-" + parts[1]
+		default:
+			operationId = operationId + "-" + parts[1]
 		}
+	} else if len(parts) == 3 && parts[2] == "{id}" && opName == http.MethodGet {
+		operationId = "Read-" + parts[1]
+	} else {
+		for _, part := range parts {
+			if part != "" {
+				operationId = operationId + "-" + part
+			}
+		}
+
 	}
 
 	return ToCamelCase(operationId), nil

@@ -7,9 +7,11 @@ req, ok := request.({{$opid}}Request)
 {{else if .HasBody }}
 req, ok := request.({{(index .Bodies 0).Schema.GoType}})
 {{end}}
+{{if or .AllParams .HasBody}}
 if !ok {
 return nil, Error(http.StatusInternalServerError, "invalid request, expected {{$opid}}Request")
 }
+{{end}}
 
 
 {{ if not .GetResponseTypeDefinitions }}
@@ -17,7 +19,7 @@ return nil, Error(http.StatusInternalServerError, "invalid request, expected {{$
 if err := svc.{{$opid}}(ctx{{if or .AllParams .HasBody}}, req{{end}}); err != nil {
 return nil, err
 }
-return {{$opid}}Response{}, nil
+return nil, nil
 
 {{else if .AllParams }}
 res, err := svc.{{$opid}}(ctx, {{range $index, $param := .AllParams -}}

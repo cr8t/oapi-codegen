@@ -1,3 +1,6 @@
+// WithTracingMiddleware wraps the provided service with tracing
+// middleware powered by zipkin using the provided service name
+// and zipkin URL
 func WithTracingMiddleware(serviceName, zipkinURL string, next Service) Service {
 
 	 reporter := httpreporter.NewReporter(zipkinURL)

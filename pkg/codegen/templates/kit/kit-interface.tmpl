@@ -1,6 +1,11 @@
+// Service is the interface to be implemented for the service business
+// logic
 type Service interface {
 {{range . -}}
 
+// {{.OperationId}} handles {{.Method}} calls to {{.Path}}
+//
+{{.SummaryAsComment}}
 {{.OperationId}}(ctx context.Context
 
 {{- if .HasBody -}}

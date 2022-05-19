@@ -1,13 +1,19 @@
+// APIError implements the StatusCode, MarshalJSON, Unwrap, and Error
+// methods and is intended to be used as a return from service methods
+// when a non 500 return code is needed
 type APIError struct {
      Code int `json:"code,omitempty"`
      Message string `json:"message,omitempty"`
      err error
 }
 
+// Error returns a new APIError with the code and message indicated
 func Error(code int, message string) error {
      return APIError{Code: code, Message: message}
 }
 
+// Errorf returns a new APIError with the code and message derived
+// from the format string and arguments
 func Errorf(code int, format string, args ...interface{}) error {
      return APIError{Code: code, Message: fmt.Sprintf(format, args...)}
 }

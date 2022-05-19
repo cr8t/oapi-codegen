@@ -1,3 +1,6 @@
+// WithMetricsMiddleware wraps the provided service with metrics
+// middleware powered by prometheus using the provided namespace
+// and subsystem
 func WithMetricsMiddleware(namespace, subsystem string, next Service) Service {
 fieldKeys := []string{"method", "error"}
 	requestCount := kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{

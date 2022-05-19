@@ -1,13 +1,12 @@
+// GetRouter returns a github.com/gorilla/mux router with the routes
+// in the spec already set up
 func GetRouter(svc Service) *mux.Router {
 	 r := mux.NewRouter()
 {{range . -}}{{$opid := .OperationId}}
 	 r.Handle("{{.Path}}", make{{$opid}}Handler(svc)).Methods("{{.Method}}")
 {{end}}
 	 r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	   w.Header().Set("content-type", "application/json")
-	   w.Header().Set("x-powered-by", "four elephants atop a giant turtle")
-	   w.WriteHeader(http.StatusNotFound)
-	   json.NewEncoder(w).Encode(Error(http.StatusNotFound, "not found"))
+	   encodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
 	 })
 	 return r
 }
@@ -72,7 +71,7 @@ return {{$opid}}Request {
 {{ else if .QueryParams }}
   return nil, Error(http.StatusNotImplemented, "Decode{{$opid}}Request must be implemented by developer")
 {{ else }}
-  return nil, Error(http.StatusNotImplemented, "not supported by the generator")
+  return nil, nil
 {{ end }}
 }
 
@@ -84,9 +83,14 @@ var Decode{{$opid}}Request = decode{{$opid}}Request
 
 {{ end }}
 
+const headerXPoweredBy = "four elephants atop a giant turtle"
+
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	w.Header().Set("x-powered-by", headerXPoweredBy)
+	if response == nil {
+	  return nil
+	}
 	w.Header().Set("content-type", "application/json")
-	w.Header().Set("x-powered-by", "four elephants atop a giant turtle")
 	return json.NewEncoder(w).Encode(response)
 }
 
@@ -109,7 +113,7 @@ func encodeErrorResponse(_ context.Context, err error, w http.ResponseWriter) {
 	}
 	 
 	 w.Header().Set("content-type", "application/json")
-	 w.Header().Set("x-powered-by", "four elephants atop a giant turtle")
+	 w.Header().Set("x-powered-by", headerXPoweredBy)
 	 w.WriteHeader(code)
 	 json.NewEncoder(w).Encode(err)
 }
