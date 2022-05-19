@@ -1,17 +1,19 @@
-func New(logger kitlog.Logger) api.Service {
+type Logger interface {
+	kitlog.Logger
+	With(kvs ...interface{}) Logger
+	Msgf(format string, args ...interface{}) error
+	Msg(msg string, kvs ...interface{}) error
+}
+
+func New(logger Logger) api.Service {
 	return &service{
-		logger: kitlog.With(logger, "subsystem", "service"),
+		logger: logger.With("subsystem", "service"),
 	}
 }
 
 type service struct {
-	logger kitlog.Logger
+	logger Logger
 }
-
-func (svc service) methodLogger(name string) kitlog.Logger {
-	return kitlog.With(svc.logger, "method", name)
-}
-
 
 {{range . -}}
 {{.SummaryAsComment}}
@@ -56,7 +58,7 @@ api.
 // database connection
    return nil
 {{- else }}
-	svc.logger.Log("msg", "this service method must be implemented")
+	svc.logger.Msg("this service method must be implemented")
 {{- if not .GetResponseTypeDefinitions }}
    return api.Error(http.StatusNotImplemented, "not implemented")
 {{- else }}
