@@ -1,7 +1,7 @@
 // WithLoggingMiddleware wraps the provided service with logging
 // middleware using the provided logger
 func WithLoggingMiddleware(logger kitlog.Logger, next Service) Service {
-	return loggingMiddleware{logger, next}
+	return loggingMiddleware{kitlog.With(logger, "subsystem", "gokit"), next}
 	}
     
 type loggingMiddleware struct {
@@ -45,16 +45,19 @@ func (mw loggingMiddleware) {{$opid}}(ctx context.Context
 		if errors.As(err, &apiErr) {
 		mw.logger.Log(
 			"method", "{{$opid}}",
-			"err", err,
+			"error", err.Error(),
 			"code", apiErr.Code,
 			"took", time.Since(begin),
 		)
 		} else {
-		mw.logger.Log(
+		args := []interface{}{
 			"method", "{{$opid}}",
-			"err", err,
 			"took", time.Since(begin),
-		)
+		}
+		if err != nil {
+		  args = append(args, "error", err.Error())
+		}
+		mw.logger.Log(args...)
 		}
 	}(time.Now())
 

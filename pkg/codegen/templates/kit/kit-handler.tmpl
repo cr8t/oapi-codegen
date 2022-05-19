@@ -1,14 +1,56 @@
 // GetRouter returns a github.com/gorilla/mux router with the routes
 // in the spec already set up
-func GetRouter(svc Service) *mux.Router {
+func GetRouter(svc Service, logger kitlog.Logger) *mux.Router {
 	 r := mux.NewRouter()
+	 if logger != nil {
+	 	logger = kitlog.With(logger, "subsystem", "httptransport")
+	 	 r.Use(makeHTTPLoggingMiddleware(logger))
+	 }
 {{range . -}}{{$opid := .OperationId}}
 	 r.Handle("{{.Path}}", make{{$opid}}Handler(svc)).Methods("{{.Method}}")
 {{end}}
 	 r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	 if logger != nil {
+		logger.Log(
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", http.StatusNotFound,
+		)
+	 }
 	   encodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
 	 })
 	 return r
+}
+
+	type loggingResponseWriter struct {
+        http.ResponseWriter
+        statusCode int
+    }
+
+    func newLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
+        return &loggingResponseWriter{w, http.StatusOK}
+    }
+
+    func (lrw *loggingResponseWriter) WriteHeader(code int) {
+        lrw.statusCode = code
+        lrw.ResponseWriter.WriteHeader(code)
+    }
+
+func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Handler {
+  return func(next http.Handler) http.Handler {
+      return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	  lwr := newLoggingResponseWriter(w)
+	defer func(begin time.Time) {
+		logger.Log(
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", lwr.statusCode,
+			"took", time.Since(begin),
+		)
+	}(time.Now())
+          next.ServeHTTP(lwr, r)
+      })
+  }
 }
 
 {{range . -}}{{$opid := .OperationId}}
