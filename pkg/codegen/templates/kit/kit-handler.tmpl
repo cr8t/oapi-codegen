@@ -4,6 +4,8 @@ func GetRouter(svc Service) *mux.Router {
 	 r.Handle("{{.Path}}", make{{$opid}}Handler(svc)).Methods("{{.Method}}")
 {{end}}
 	 r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	   w.Header().Set("content-type", "application/json")
+	   w.Header().Set("x-powered-by", "four elephants atop a giant turtle")
 	   w.WriteHeader(http.StatusNotFound)
 	   json.NewEncoder(w).Encode(Error(http.StatusNotFound, "not found"))
 	 })
