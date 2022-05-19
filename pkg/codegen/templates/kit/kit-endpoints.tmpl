@@ -3,16 +3,19 @@ func make{{$opid}}Endpoint(svc Service) endpoint.Endpoint {
 return func(ctx context.Context, request interface{}) (interface{}, error) {
 
 {{if .AllParams}}
-req := request.({{$opid}}Request)
+req, ok := request.({{$opid}}Request)
 {{else if .HasBody }}
-req := request.({{(index .Bodies 0).Schema.GoType}})
+req, ok := request.({{(index .Bodies 0).Schema.GoType}})
 {{end}}
+if !ok {
+return nil, Error(http.StatusInternalServerError, "invalid request, expected {{$opid}}Request")
+}
 
 
 {{ if not .GetResponseTypeDefinitions }}
 
 if err := svc.{{$opid}}(ctx{{if or .AllParams .HasBody}}, req{{end}}); err != nil {
-return {{$opid}}Response{err.Error()}, err
+return nil, err
 }
 return {{$opid}}Response{}, nil
 
