@@ -1,6 +1,6 @@
 func New(logger kitlog.Logger) api.Service {
 	return &service{
-		logger: logger.With("subsystem", "service"),
+		logger: kitlog.With(logger, "subsystem", "service"),
 	}
 }
 
@@ -14,7 +14,6 @@ func (svc service) methodLogger(name string) kitlog.Logger {
 
 
 {{range . -}}
-
 {{.SummaryAsComment}}
 func (svc service) {{.OperationId}}(ctx context.Context
 
@@ -23,7 +22,7 @@ func (svc service) {{.OperationId}}(ctx context.Context
 {{range $index, $body := .Bodies -}}
 
 {{- if eq $index 0 -}}
-, data {{$body.Schema.GoType}}
+, data api.{{$body.Schema.GoType}}
 {{- end -}}
 
 {{- end -}}
@@ -31,7 +30,15 @@ func (svc service) {{.OperationId}}(ctx context.Context
 {{- else -}}
 
 {{range $index, $param := .AllParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}
+{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{$param.Schema.GoType -}}
 {{- end -}}
 
 {{- end -}}
@@ -40,17 +47,21 @@ func (svc service) {{.OperationId}}(ctx context.Context
 ( 
 {{- range $index, $return := .GetResponseTypeDefinitions -}}
 {{- if $index }}, {{end -}}
-*{{ $return.Schema.GoType }}
+*api.{{ $return.Schema.GoType }}
 {{- end -}}
 , error)
 {{- end }} {
-
+{{- if eq .OperationId "HealthCheck" }}
+// any health checking of the service goes here, like checking a
+// database connection
+   return nil
+{{- else }}
 	svc.logger.Log("msg", "this service method must be implemented")
-{{ if not .GetResponseTypeDefinitions }}
+{{- if not .GetResponseTypeDefinitions }}
    return api.Error(http.StatusNotImplemented, "not implemented")
-{{ else }}
+{{- else }}
    return nil, api.Error(http.StatusNotImplemented, "not implemented")
-{{ end }}
-
+{{- end }}
+{{- end }}
 }
 {{end}}
