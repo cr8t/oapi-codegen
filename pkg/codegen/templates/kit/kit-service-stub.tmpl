@@ -35,7 +35,10 @@ func (svc service) {{.OperationId}}(ctx context.Context
 , {{- $param.ParamName}} {{if not $param.Required}}*{{end}}
 {{- if not (or
 	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
 	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
 	(eq "string" $param.Schema.GoType)
 	(eq "bool" $param.Schema.GoType)) -}}
 api.
