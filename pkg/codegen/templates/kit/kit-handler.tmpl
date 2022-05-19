@@ -40,31 +40,62 @@ return body, nil
 vars := mux.Vars(r)
 
 {{range .PathParams -}}
-{{if eq .Schema.GoType "int" }}
-{{if .Required }}
 {{.ParamName}}Str, ok := vars["{{.ParamName}}"]
+
+  {{if .Required }}
 if !ok {
    return nil, Error(http.StatusBadRequest, "missing required parameter '{{.ParamName}}'")
 }
-{{else}}
-{{.ParamName}}Str, ok := vars["{{.ParamName}}"]
-if !ok {
-{{.ParamName}}Str = "0"
-}
-{{end}}
+  {{end}}
 
-{{.ParamName}}, err := strconv.Atoi({{.ParamName}}Str)
+var {{.ParamName}} *{{.Schema.GoType}}
+  {{if eq .Schema.GoType "int" }}
+  
+    {{if not .Required}}
+if ok {
+    {{end}}
+
+param, err := strconv.Atoi({{.ParamName}}Str)
 if err != nil {
   return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
 }
-{{else }}
-{{.ParamName}}, ok := vars["{{.ParamName}}"]
-{{end}}
+{{.ParamName}} = &param
+    {{if not .Required}}
+}
+    {{end}}
+
+  {{else if eq .Schema.GoType "float64"}}
+  
+    {{if not .Required}}
+if ok {
+    {{end}}
+param, err := strconv.ParseFloat({{.ParamName}}Str, 64)
+if err != nil {
+  return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', double required")
+}
+{{.ParamName}} = &param
+    {{if not .Required}}
+}
+    {{end}}
+
+
+  {{else if eq .Schema.GoType "string"}}
+  
+    {{if not .Required}}
+if ok {
+    {{end}}
+{{.ParamName}} = &{{.ParamName}}Str
+    {{if not .Required}}
+}
+    {{end}}
+
+  {{end}}
+  
 {{end}}
 
 return {{$opid}}Request {
 {{range .PathParams -}}
-{{.GoName}}: {{.ParamName}},
+{{.GoName}}: {{if .Required}}*{{end}}{{.ParamName}},
 {{end}}
 }, nil
 
