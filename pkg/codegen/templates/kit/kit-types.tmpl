@@ -19,6 +19,10 @@ func (err APIError) Error() string {
      return fmt.Sprintf("[%d] %s", err.Code, err.Message)
 }
 
+func (err APIError) StatusCode() int {
+     return err.Code
+}
+
 func (err APIError) MarshalJSON() ([]byte, error) {
      var message string
      if err.err != nil {
@@ -26,7 +30,7 @@ func (err APIError) MarshalJSON() ([]byte, error) {
      } else {
        message = err.Message
      }
-     return []byte(fmt.Sprintf(`{"code": %d, "message": "%s"}`, err.Code, message)), nil
+     return []byte(fmt.Sprintf(`{"error": "%s"}`, message)), nil
 }
 
 func (err APIError) Wrap(towrap error) error {

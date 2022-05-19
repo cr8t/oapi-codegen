@@ -83,17 +83,30 @@ var Decode{{$opid}}Request = decode{{$opid}}Request
 {{ end }}
 
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	w.Header().Set("content-type", "application/json")
 	return json.NewEncoder(w).Encode(response)
 }
 
 func encodeErrorResponse(_ context.Context, err error, w http.ResponseWriter) {
-	 var apiErr APIError
-	 if errors.As(err, &apiErr) {
-	 	w.WriteHeader(apiErr.Code)
-	 } else {
-	 	w.WriteHeader(http.StatusInternalServerError)
-		err = Error(http.StatusInternalServerError, err.Error())
+	 code := http.StatusInternalServerError
+	 if sc, ok := err.(httptransport.StatusCoder); ok {
+	 	code = sc.StatusCode()
 	 }
+	
+	 if _, ok := err.(json.Marshaler); !ok {
+		err = Error(code, err.Error())
+	 }
+
+	 if headerer, ok := err.(httptransport.Headerer); ok {
+		for k, values := range headerer.Headers() {
+			for _, v := range values {
+				w.Header().Add(k, v)
+			}
+		}
+	}
+	 
+	 w.Header().Set("content-type", "application/json")
+	 w.WriteHeader(code)
 	 json.NewEncoder(w).Encode(err)
 }
 
