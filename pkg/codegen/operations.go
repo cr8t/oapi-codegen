@@ -1000,6 +1000,16 @@ func GenerateKitServer(t *template.Template, operations []OperationDefinition) (
 	}, t, operations)
 }
 
+// GenerateKitServiceStub This function generates all the go code for the ServerInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitServiceStub(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-service-stub.tmpl",
+	}, t, operations)
+}
+
+// GenerateStrictServer generates all the go code for the ServerInterface as well as
+// all the wrapper functions around our handlers.
 func GenerateStrictServer(t *template.Template, operations []OperationDefinition, opts Configuration) (string, error) {
 	templates := []string{"strict/strict-interface.tmpl"}
 	if opts.Generate.ChiServer || opts.Generate.GorillaServer {
@@ -1014,6 +1024,7 @@ func GenerateStrictServer(t *template.Template, operations []OperationDefinition
 	return GenerateTemplates(templates, t, operations)
 }
 
+// GenerateStrictResponses generates a server responses for the strict server.
 func GenerateStrictResponses(t *template.Template, responses []ResponseDefinition) (string, error) {
 	return GenerateTemplates([]string{"strict/strict-responses.tmpl"}, t, responses)
 }

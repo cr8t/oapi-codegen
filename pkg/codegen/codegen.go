@@ -251,6 +251,18 @@ func Generate(spec *openapi3.T, opts Configuration) (string, error) {
 		}
 	}
 
+	var kitServiceStubOut string
+	if opts.GenerateKitServiceStub {
+		importMapping["kitlog"] = goImport{
+			Name: "kitlog",
+			Path: "github.com/go-kit/log",
+		}
+		kitServiceStubOut, err = GenerateKitServiceStub(t, ops)
+		if err != nil {
+			return "", fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		}
+	}
+
 	var strictServerOut string
 	if opts.Generate.Strict {
 		var responses []ResponseDefinition
@@ -358,8 +370,15 @@ func Generate(spec *openapi3.T, opts Configuration) (string, error) {
 		}
 	}
 
-	if opts.Generate.KitServer {
+	if opts.GenerateKitServer || opts.GenerateKitServiceStub {
 		_, err = w.WriteString(kitServerOut)
+		if err != nil {
+			return "", fmt.Errorf("error writing server path handlers: %w", err)
+		}
+	}
+
+	if opts.GenerateKitServiceStub {
+		_, err = w.WriteString(kitServiceStubOut)
 		if err != nil {
 			return "", fmt.Errorf("error writing server path handlers: %w", err)
 		}
