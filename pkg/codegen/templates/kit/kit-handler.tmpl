@@ -7,7 +7,7 @@ func GetRouter(svc Service, logger kitlog.Logger) *mux.Router {
 	 	 r.Use(makeHTTPLoggingMiddleware(logger))
 	 }
 {{range . -}}{{$opid := .OperationId}}
-	 r.Handle("{{.Path}}", make{{$opid}}Handler(svc)).Methods("{{.Method}}")
+	 r.Handle("{{.Path}}", Make{{$opid}}Handler(svc)).Methods("{{.Method}}")
 {{end}}
 	 r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	 if logger != nil {
@@ -55,7 +55,7 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
 
 
 {{range . -}}{{$opid := .OperationId}}
-func make{{$opid}}Handler(svc Service) http.Handler {
+func Make{{$opid}}Handler(svc Service) http.Handler {
 return httptransport.NewServer(
 		make{{$opid}}Endpoint(svc),
 		{{ if .QueryParams }}
