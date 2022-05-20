@@ -16,13 +16,16 @@ const (
 {{- end}}
 )
 
+// {{$Enum.TypeName}}List is a slice of all valid {{$Enum.TypeName}} enum types
 var {{$Enum.TypeName}}List = []{{$Enum.TypeName}}{
 {{- range $index, $value := $Enum.Schema.EnumValues}}
   {{$index}},
 {{- end}}
 }
 
-{{ if eq $Enum.Schema.GoType "string" }}
+// IsValid{{$Enum.TypeName}} checks if the supplied {{$Enum.TypeName}} is a
+// valid enum value
+{{- if eq $Enum.Schema.GoType "string" }}
 func IsValid{{$Enum.TypeName}}(thing {{$Enum.TypeName}}) bool {
 for _, c := range {{$Enum.TypeName}}List {
 if strings.EqualFold(string(thing), string(c)) {
@@ -31,7 +34,7 @@ return true
 }
 return false
 }
-{{ else }}
+{{- else }}
 func IsValid{{$Enum.TypeName}}(thing {{$Enum.TypeName}}) bool {
 for _, c := range {{$Enum.TypeName}}List {
 if thing == c {
