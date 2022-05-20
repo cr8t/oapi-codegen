@@ -1056,6 +1056,7 @@ func GenerateKitServer(t *template.Template, operations []OperationDefinition) (
 		"kit/kit-middleware-logging.tmpl",
 		"kit/kit-middleware-metrics.tmpl",
 		"kit/kit-middleware-tracing.tmpl",
+		"kit/kit-middleware-chaos.tmpl",
 		"kit/kit-handler.tmpl",
 		"kit/kit-debug.tmpl",
 	}, t, operations)

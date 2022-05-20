@@ -1,0 +1,95 @@
+// WithChaosMiddleware wraps the provided service with chaos
+// middleware using the provided logger
+func WithChaosMiddleware(factor, max int, next Service) Service {
+	rand.Seed(time.Now().UnixNano())
+	return chaosMiddleware{factor, max, next}
+	}
+    
+func (mw chaosMiddleware) maybeChaos() error {
+	if rand.Intn(mw.max) < mw.factor {
+		return fmt.Errorf("CHAOS STRIKES")
+	}
+	return nil
+}
+
+
+type chaosMiddleware struct {
+	factor, max int
+	next   Service
+}
+
+{{range . -}}{{$opid := .OperationId}}
+
+func (mw chaosMiddleware) {{$opid}}(ctx context.Context
+
+{{- if .HasBody -}}
+
+{{range $index, $body := .Bodies -}}
+
+{{- if eq $index 0 -}}
+, data {{$body.Schema.GoType}}
+{{- end -}}
+
+{{- end -}}
+
+{{- else -}}
+
+{{range $index, $param := .AllParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+
+{{- end -}}
+
+) {{ if not .GetResponseTypeDefinitions}} error { {{else -}}
+( 
+{{- range $index, $return := .GetResponseTypeDefinitions -}}
+{{- if $index }}, {{end -}}
+*{{ $return.Schema.GoType }}
+{{- end -}}
+, error) {
+{{- end }}
+	var err error
+	chaos := mw.maybeChaos()
+{{ if not .GetResponseTypeDefinitions }}
+
+if chaos != nil {
+return chaos
+}
+
+{{ if .HasBody }}
+	err = mw.next.{{$opid}}(ctx, data)
+{{ else }}
+
+	err = mw.next.{{$opid}}(ctx, {{range $index, $param := .AllParams -}}
+{{if $index}}, {{end -}}
+{{- $param.ParamName -}}
+{{- end -}})
+
+{{ end }}
+	return err
+
+{{else if .AllParams }}
+
+if chaos != nil {
+return nil, chaos
+}
+	output, err := mw.next.{{$opid}}(ctx, {{range $index, $param := .AllParams -}}
+{{if $index}}, {{end -}}
+{{- $param.ParamName -}}
+{{- end -}})
+
+	return output, err
+	
+{{ else if .HasBody }}
+
+if chaos != nil {
+return nil, chaos
+}
+	output, err := mw.next.{{$opid}}(ctx, data)
+
+	return output, err
+	
+{{end}}
+
+}
+{{end}}
