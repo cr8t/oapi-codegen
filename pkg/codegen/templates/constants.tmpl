@@ -11,5 +11,23 @@ const (
 {{range $name, $value := $Enum.GetValues}}
   {{$name}} {{$Enum.TypeName}} = {{$Enum.ValueWrapper}}{{$value}}{{$Enum.ValueWrapper -}}
 {{end}}
+{{- range $index, $value := $Enum.Schema.EnumValues}}
+  {{$index}} {{$Enum.TypeName}} = {{$Enum.ValueWrapper}}{{$value}}{{$Enum.ValueWrapper}}
+{{- end}}
 )
+
+var {{$Enum.TypeName}}List = []{{$Enum.TypeName}}{
+{{- range $index, $value := $Enum.Schema.EnumValues}}
+  {{$index}},
+{{- end}}
+}
+
+func IsValid{{$Enum.TypeName}}(thing {{$Enum.TypeName}}) bool {
+for _, c := range {{$Enum.TypeName}}List {
+if thing == c {
+return true
+}
+}
+return false
+}
 {{end}}
