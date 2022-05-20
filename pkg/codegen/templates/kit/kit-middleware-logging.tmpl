@@ -41,10 +41,12 @@ func (mw loggingMiddleware) {{$opid}}(ctx context.Context
 {{- end }}
 	var err error
 	defer func(begin time.Time) {
+	method := "{{$opid}}"
+	if method == "HealthCheck" && err == nil { return; }
 		var apiErr APIError
 		if errors.As(err, &apiErr) {
 		mw.logger.Log(
-			"method", "{{$opid}}",
+			"method", method,
 			"error", err.Error(),
 			"code", apiErr.Code,
 			"took", time.Since(begin),

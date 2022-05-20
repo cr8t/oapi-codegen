@@ -41,6 +41,7 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
       return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	  lwr := newLoggingResponseWriter(w)
 	defer func(begin time.Time) {
+	if r.URL.Path == "/healthz" && lwr.statusCode == http.StatusOK { return; }
 		logger.Log(
 			"method", r.Method,
 			"path", r.URL.Path,
