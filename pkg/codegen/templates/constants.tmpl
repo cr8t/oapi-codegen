@@ -22,6 +22,16 @@ var {{$Enum.TypeName}}List = []{{$Enum.TypeName}}{
 {{- end}}
 }
 
+{{ if eq $Enum.Schema.GoType "string" }}
+func IsValid{{$Enum.TypeName}}(thing {{$Enum.TypeName}}) bool {
+for _, c := range {{$Enum.TypeName}}List {
+if strings.EqualFold(string(thing), string(c)) {
+return true
+}
+}
+return false
+}
+{{ else }}
 func IsValid{{$Enum.TypeName}}(thing {{$Enum.TypeName}}) bool {
 for _, c := range {{$Enum.TypeName}}List {
 if thing == c {
@@ -30,4 +40,7 @@ return true
 }
 return false
 }
+{{end}}
+
+{{end}}
 {{end}}

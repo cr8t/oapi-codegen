@@ -53,7 +53,7 @@ func (mw loggingMiddleware) {{$opid}}(ctx context.Context
 		)
 		} else {
 		args := []interface{}{
-			"method", "{{$opid}}",
+			"method", method,
 			"took", time.Since(begin),
 		}
 		if err != nil {
