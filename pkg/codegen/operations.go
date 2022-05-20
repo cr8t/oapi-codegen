@@ -509,7 +509,7 @@ func OperationDefinitions(swagger *openapi3.T) ([]OperationDefinition, error) {
 			}
 			// We rely on OperationID to generate function names, it's required
 			if op.OperationID == "" {
-				op.OperationID, err = generateDefaultOperationID(opName, requestPath)
+				op.OperationID, err = generateDefaultOperationID(opName, requestPath, len(pathOps))
 				if err != nil {
 					return nil, fmt.Errorf("error generating default OperationID for %s/%s: %s",
 						opName, requestPath, err)
@@ -592,7 +592,37 @@ func OperationDefinitions(swagger *openapi3.T) ([]OperationDefinition, error) {
 	return operations, nil
 }
 
-func generateDefaultOperationID(opName string, requestPath string) (string, error) {
+func isPathParam(part string) bool {
+	if len(part) < 2 {
+		return false
+	}
+	return part[0] == '{' && part[len(part)-1] == '}'
+}
+
+func getPathParamCount(parts []string) int {
+	var count int
+	for _, part := range parts {
+		if len(part) < 2 {
+			continue
+		}
+		if isPathParam(part) {
+			count++
+		}
+	}
+	return count
+}
+func isSinglePathWithParams(parts []string) bool {
+	for i, part := range parts {
+		if i <= 1 && isPathParam(part) {
+			return false
+		} else if i > 1 && !isPathParam(part) {
+			return false
+		}
+	}
+	return true
+}
+
+func generateDefaultOperationID(opName string, requestPath string, pathOpCount int) (string, error) {
 	operationId := strings.ToLower(opName)
 
 	if opName == "" {
@@ -604,6 +634,20 @@ func generateDefaultOperationID(opName string, requestPath string) (string, erro
 	}
 
 	parts := strings.Split(requestPath, "/")
+
+	pathParamCount := getPathParamCount(parts)
+
+	if pathParamCount > 1 {
+		if isSinglePathWithParams(parts) {
+			return ToCamelCase(operationId + "-" + parts[1]), nil
+		}
+		for _, part := range parts {
+			if part != "" {
+				operationId = operationId + "-" + part
+			}
+		}
+		return ToCamelCase(operationId), nil
+	}
 
 	if len(parts) == 2 {
 		switch opName {
@@ -620,7 +664,7 @@ func generateDefaultOperationID(opName string, requestPath string) (string, erro
 		default:
 			operationId = operationId + "-" + parts[1]
 		}
-	} else if len(parts) >= 3 && parts[2][0] == '{' && parts[2][len(parts[2])-1] == '}' {
+	} else if len(parts) >= 3 && isPathParam(parts[2]) {
 		switch opName {
 		case http.MethodGet:
 			operationId = "Read-" + parts[1]
@@ -636,9 +680,8 @@ func generateDefaultOperationID(opName string, requestPath string) (string, erro
 				operationId = operationId + "-" + part
 			}
 		}
-		byProp := parts[2][1 : len(parts[2])-1]
-		if byProp != "id" {
-			operationId += "-by-" + byProp
+		if parts[2] != "{id}" {
+			operationId += "-by-" + parts[2]
 		}
 	} else {
 		for _, part := range parts {

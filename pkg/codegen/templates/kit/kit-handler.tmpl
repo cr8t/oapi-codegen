@@ -53,6 +53,7 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
   }
 }
 
+
 {{range . -}}{{$opid := .OperationId}}
 func make{{$opid}}Handler(svc Service) http.Handler {
 return httptransport.NewServer(
@@ -78,7 +79,7 @@ return nil, apiErr.Wrap(err)
 }
 return body, nil
 
-{{ else if .PathParams }}
+{{ else if and .PathParams (not .QueryParams)}}
 vars := mux.Vars(r)
 
 {{range .PathParams -}}
@@ -115,7 +116,6 @@ param, err := strconv.ParseFloat({{.ParamName}}Str, 64)
 if err != nil {
   return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', double required")
 }
-{{.ParamName}} = &param
     {{if not .Required}}
 }
     {{end}}
@@ -131,6 +131,17 @@ if ok {
 }
     {{end}}
 
+  {{ else }}
+  
+    {{if not .Required}}
+if ok {
+    {{end}}
+	{{.ParamName}}{{.Schema.GoType}} := {{.Schema.GoType}}({{.ParamName}}Str)
+    {{.ParamName}} = &{{.ParamName}}{{.Schema.GoType}}
+    {{if not .Required}}
+}
+    {{end}}
+	
   {{end}}
   
 {{end}}
