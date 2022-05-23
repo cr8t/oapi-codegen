@@ -5,11 +5,16 @@ func WithChaosMiddleware(factor, max int, next Service) Service {
 	return chaosMiddleware{factor, max, next}
 	}
     
-func (mw chaosMiddleware) maybeChaos() error {
-	if rand.Intn(mw.max) < mw.factor {
+// MaybeChaos will return an error, maybe
+func MaybeChaos(factor, max int) error {
+	if rand.Intn(max) < factor {
 		return fmt.Errorf("CHAOS STRIKES")
 	}
 	return nil
+}
+
+func (mw chaosMiddleware) maybeChaos() error {
+return MaybeChaos(mw.factor, mw.max)
 }
 
 
