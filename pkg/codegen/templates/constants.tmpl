@@ -5,6 +5,8 @@ const (
 {{end}}
 )
 {{end}}
+
+{{if gt (len .EnumDefinitions) 0 }}
 {{range $Enum := .EnumDefinitions}}
 // Defines values for {{$Enum.TypeName}}.
 const (
@@ -46,4 +48,15 @@ return false
 {{end}}
 
 {{end}}
+
+// EnumMatchInsensitive checks if a two string type constants match
+// ignoring case
+func EnumMatchInsensitive[T string
+{{- range $Enum := .EnumDefinitions -}}
+{{- if eq $Enum.Schema.GoType "string" }} | {{$Enum.TypeName }}{{ end -}}
+{{- end -}}
+](thing1, thing2 T) bool {
+	return strings.EqualFold(string(thing1), string(thing2))
+}
+
 {{end}}
