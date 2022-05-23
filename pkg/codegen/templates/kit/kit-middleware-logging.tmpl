@@ -43,12 +43,12 @@ func (mw loggingMiddleware) {{$opid}}(ctx context.Context
 	defer func(begin time.Time) {
 	method := "{{$opid}}"
 	if method == "HealthCheck" && err == nil { return; }
-		var apiErr APIError
-		if errors.As(err, &apiErr) {
+		var coder httptransport.StatusCoder
+		if errors.As(err, &coder) {
 		mw.logger.Log(
 			"method", method,
 			"error", err.Error(),
-			"code", apiErr.Code,
+			"code", coder.StatusCode(),
 			"took", time.Since(begin),
 		)
 		} else {
