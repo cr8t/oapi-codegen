@@ -43,18 +43,22 @@ func (mw loggingMiddleware) {{$opid}}(ctx context.Context
 	defer func(begin time.Time) {
 	method := "{{$opid}}"
 	if method == "HealthCheck" && err == nil { return; }
+	duration := time.Since(begin)
+	ms := toFixed(float64(time.Since(begin))/float64(time.Millisecond), 2)
 		var coder httptransport.StatusCoder
 		if errors.As(err, &coder) {
 		mw.logger.Log(
 			"method", method,
 			"error", err.Error(),
 			"code", coder.StatusCode(),
-			"took", time.Since(begin),
+			"duration", duration,
+			"ms", ms,
 		)
 		} else {
 		args := []interface{}{
 			"method", method,
-			"took", time.Since(begin),
+			"duration", duration,
+			"ms", ms,
 		}
 		if err != nil {
 		  args = append(args, "error", err.Error())

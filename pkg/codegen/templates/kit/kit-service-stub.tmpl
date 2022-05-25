@@ -1,18 +1,11 @@
-type Logger interface {
-	kitlog.Logger
-	With(kvs ...interface{}) Logger
-	Msgf(format string, args ...interface{}) error
-	Msg(msg string, kvs ...interface{}) error
-}
-
-func New(logger Logger) api.Service {
+func New(logger api.Logger) api.Service {
 	return &service{
 		logger: logger.With("subsystem", "service"),
 	}
 }
 
 type service struct {
-	logger Logger
+	logger api.Logger
 }
 
 {{range . -}}
