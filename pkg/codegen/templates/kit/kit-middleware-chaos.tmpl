@@ -5,10 +5,25 @@ func WithChaosMiddleware(factor, max int, next Service) Service {
 	return chaosMiddleware{factor, max, next}
 	}
     
+// ErrChaos is the base chaos error that is wrapped
+var ErrChaos = fmt.Errorf("CHAOS STRIKES")
+
+// ChaosStatusCodes is an array of status codes from which to randomly
+// select for the chaos status code
+var ChaosStatusCodes = []int{http.StatusInternalServerError, http.StatusServiceUnavailable}
+
+var GetChaosError func() error  = getChaosError
+
+func getChaosError() error {
+code := ChaosStatusCodes[rand.Intn(len(ChaosStatusCodes))]
+err := APIError{Code: code, Message: http.StatusText(code)}
+return err.Wrap(ErrChaos)
+}
+
 // MaybeChaos will return an error, maybe
 func MaybeChaos(factor, max int) error {
 	if rand.Intn(max) < factor {
-		return fmt.Errorf("CHAOS STRIKES")
+		return GetChaosError()
 	}
 	return nil
 }
