@@ -10,14 +10,19 @@ func GetRouter(svc Service, logger kitlog.Logger) *mux.Router {
 	 r.Handle("{{.Path}}", Make{{$opid}}Handler(svc)).Methods("{{.Method}}")
 {{end}}
 	 r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	 begin := time.Now()
+	   encodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
+	duration := time.Since(begin)
+	ms := toFixed(float64(time.Since(begin))/float64(time.Millisecond), 2)
 	 if logger != nil {
 		logger.Log(
 			"method", r.Method,
 			"path", r.URL.Path,
 			"status", http.StatusNotFound,
+			"duration", duration,
+			"ms", ms,
 		)
 	 }
-	   encodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
 	 })
 	 return r
 }
