@@ -27,16 +27,6 @@ var {{$Enum.TypeName}}List = []{{$Enum.TypeName}}{
 
 // IsValid{{$Enum.TypeName}} checks if the supplied {{$Enum.TypeName}} is a
 // valid enum value
-{{- if eq $Enum.Schema.GoType "string" }}
-func IsValid{{$Enum.TypeName}}[T {{$Enum.TypeName}} | {{$Enum.Schema.GoType}}] (thing T) bool {
-for _, c := range {{$Enum.TypeName}}List {
-if strings.EqualFold(string(thing), string(c)) {
-return true
-}
-}
-return false
-}
-{{- else }}
 func IsValid{{$Enum.TypeName}}[T {{$Enum.TypeName}} | {{$Enum.Schema.GoType}}] (thing T) bool {
 for _, c := range {{$Enum.TypeName}}List {
 if {{$Enum.Schema.GoType}}(thing) == {{$Enum.Schema.GoType}}(c) {
@@ -45,8 +35,6 @@ return true
 }
 return false
 }
-{{end}}
-
 {{end}}
 
 // EnumMatchInsensitive checks if a two string type constants match
