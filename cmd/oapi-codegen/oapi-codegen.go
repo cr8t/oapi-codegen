@@ -449,6 +449,10 @@ func generationTargets(cfg *codegen.Configuration, targets []string) error {
 			opts.GorillaServer = true
 		case "kit", "kit-server":
 			opts.KitServer = true
+		case "kit", "kit-service-stub":
+			opts.KitServiceStub = true
+		case "kit", "kit-client":
+			opts.KitClient = true
 		case "strict-server":
 			opts.Strict = true
 		case "client":

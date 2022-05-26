@@ -1091,6 +1091,14 @@ func GenerateStrictResponses(t *template.Template, responses []ResponseDefinitio
 	return GenerateTemplates([]string{"strict/strict-responses.tmpl"}, t, responses)
 }
 
+// GenerateKitClient This function generates all the go code for the ServerInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitClient(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-client.tmpl",
+	}, t, operations)
+}
+
 // GenerateClient uses the template engine to generate the function which registers our wrappers
 // Uses the template engine to generate the function which registers our wrappers
 // as Echo path handlers.

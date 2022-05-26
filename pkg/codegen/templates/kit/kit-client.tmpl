@@ -1,0 +1,104 @@
+type Client interface {
+	 api.Service
+	 WithHTTPClient(*http.Client) Client
+	 WithLogger(api.Logger) Client
+}
+
+func New(baseURL string) Client {
+	return &client{
+		baseURL: baseURL,
+	}
+}
+
+type client struct {
+	logger api.Logger
+	baseURL string
+	http *http.Client
+}
+
+func (cl client) WithHTTPClient(httpClient *http.Client) Client {
+cl.http = httpClient
+return cl
+}
+
+func (cl client) WithLogger(logger api.Logger) Client {
+cl.logger = logger
+return cl
+}
+
+func (cl client) request(method, path string, body io.Reader, output interface{}) error {
+	 req, err := http.NewRequest(method, fmt.Sprintf("%s/%s", cl.baseURL, path), body)
+	 if err != nil {
+	 	return fmt.Errorf("making request: %w", err)
+	 }
+	 res, err := cl.http.Do(req)
+	 if err != nil {
+		return fmt.Errorf("sending request: %w", err)
+	 }
+	 defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		body, err := io.ReadAll(res.Body)
+		if err != nil {
+			return fmt.Errorf("reading %d status body: %w", res.StatusCode, err)
+		}
+		return fmt.Errorf("[%d] %s", res.StatusCode, body)
+	}
+
+	if err := json.NewDecoder(res.Body).Decode(&output); err != nil {
+		return fmt.Errorf("parsing response: %w", err)
+	}
+
+	return nil
+}
+
+{{range . -}}
+{{.SummaryAsComment}}
+func (cl client) {{.OperationId}}(ctx context.Context
+
+{{- if .HasBody -}}
+
+{{range $index, $body := .Bodies -}}
+
+{{- if eq $index 0 -}}
+, data api.{{$body.Schema.GoType}}
+{{- end -}}
+
+{{- end -}}
+
+{{- else -}}
+
+{{range $index, $param := .AllParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}
+{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{$param.Schema.GoType -}}
+{{- end -}}
+
+{{- end -}}
+
+) {{ if not .GetResponseTypeDefinitions}} error {{else -}}
+( 
+{{- range $index, $return := .GetResponseTypeDefinitions -}}
+{{- if $index }}, {{end -}}
+*api.{{ $return.Schema.GoType }}
+{{- end -}}
+, error)
+{{- end }} {
+{{- if eq .OperationId "HealthCheck" }}
+// you don't ned to implement this, it's just here to satisfy the interface
+   return nil
+{{- else }}
+	cl.logger.Msg("this client method must be implemented")
+	return {{ if .GetResponseTypeDefinitions }}nil, {{end}}fmt.Errorf("not implemented")
+{{- end }}
+}
+{{end}}
