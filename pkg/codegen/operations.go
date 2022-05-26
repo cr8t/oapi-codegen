@@ -683,6 +683,24 @@ func generateDefaultOperationID(opName string, requestPath string, pathOpCount i
 		if parts[2] != "{id}" {
 			operationId += "-by-" + parts[2]
 		}
+
+	} else if pathParamCount == 0 {
+		switch opName {
+		case http.MethodGet:
+			operationId = "Read-" + parts[1]
+		case http.MethodPost:
+			operationId = "Create-" + parts[1]
+		case http.MethodPut:
+			operationId = "Update-" + parts[1]
+		default:
+			operationId = operationId + "-" + parts[1]
+		}
+
+		for _, part := range parts[2:] {
+			if part != "" {
+				operationId = operationId + "-" + part
+			}
+		}
 	} else {
 		for _, part := range parts {
 			if part != "" {
