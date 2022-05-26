@@ -85,10 +85,20 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 		ret = &(urlVal[0])
 	case []string:
 		ret = urlVal
+	case []int:
+		ints := make([]int, len(urlVal))
+		for i, v := range urlVal {
+			val, err := strconv.Atoi(v)
+			if err != nil {
+				continue
+			}
+			ints[i] = val
+		}
+		ret = ints
 	case bool, *bool:
 	    val, err := strconv.ParseBool(urlVal[0])
 		if err != nil {
-			panic(fmt.Errorf("invalid bool url value %s for key %s", urlVal, key))
+			return ret.(T)
 		}
 		switch any(defaultVal).(type) {
 		  case int:
@@ -99,7 +109,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 	case int, *int:
 	    val, err := strconv.Atoi(urlVal[0])
 		if err != nil {
-			panic(fmt.Errorf("invalid int url value %s for key %s", urlVal, key))
+			return ret.(T)
 		}
 		switch any(defaultVal).(type) {
 		  case int:
@@ -110,7 +120,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 	case float64, *float64:
 	    val, err := strconv.ParseFloat(urlVal[0], 64)
 		if err != nil {
-			panic(fmt.Errorf("invalid double url value %s for key %s", urlVal, key))
+			return ret.(T)
 		}
 		switch any(defaultVal).(type) {
 		  case float64:
@@ -134,19 +144,19 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 	(eq "int64" .Schema.GoType)) }}
 	    val, err := strconv.ParseInt(urlVal[0], 10, 64)
 		if err != nil {
-			panic(fmt.Errorf("invalid double url value %s for key %s", urlVal, key))
+			return ret.(T)
 		}
 {{- else if (or
 	(eq "float64" .Schema.GoType)
 	(eq "float32" .Schema.GoType)) }}
 	    val, err := strconv.ParseFloat(urlVal[0], 64)
 		if err != nil {
-			panic(fmt.Errorf("invalid int url value %s for key %s", urlVal, key))
+			return ret.(T)
 		}
 {{- else if (eq "bool" .Schema.GoType) }}
 	    val, err := strconv.ParseBool(urlVal[0])
 		if err != nil {
-			panic(fmt.Errorf("invalid bool url value %s for key %s", urlVal, key))
+			return ret.(T)
 		}
 {{- else }}
 		val := urlVal[0]
