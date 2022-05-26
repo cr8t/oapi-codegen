@@ -54,9 +54,10 @@ type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.Ty
 {{end}}
 
 func QueryGetSubValue[T comparable](values url.Values, prefix, key string, defaultVal T) T {
+	parts := strings.Split(key, ".")
 	keys := []string{
 		key,
-		fmt.Sprintf("%s[%s]", prefix, key),
+		fmt.Sprintf("%s[%s]", prefix, strings.Join(parts, "][")),
 		fmt.Sprintf("%s.%s", prefix, key),
 	}
 
