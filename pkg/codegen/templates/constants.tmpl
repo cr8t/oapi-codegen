@@ -28,7 +28,7 @@ var {{$Enum.TypeName}}List = []{{$Enum.TypeName}}{
 // IsValid{{$Enum.TypeName}} checks if the supplied {{$Enum.TypeName}} is a
 // valid enum value
 {{- if eq $Enum.Schema.GoType "string" }}
-func IsValid{{$Enum.TypeName}}(thing {{$Enum.TypeName}}) bool {
+func IsValid{{$Enum.TypeName}}[T {{$Enum.TypeName}} | {{$Enum.Schema.GoType}}] (thing T) bool {
 for _, c := range {{$Enum.TypeName}}List {
 if strings.EqualFold(string(thing), string(c)) {
 return true
@@ -37,9 +37,9 @@ return true
 return false
 }
 {{- else }}
-func IsValid{{$Enum.TypeName}}(thing {{$Enum.TypeName}}) bool {
+func IsValid{{$Enum.TypeName}}[T {{$Enum.TypeName}} | {{$Enum.Schema.GoType}}] (thing T) bool {
 for _, c := range {{$Enum.TypeName}}List {
-if thing == c {
+if {{$Enum.Schema.GoType}}(thing) == {{$Enum.Schema.GoType}}(c) {
 return true
 }
 }
@@ -61,7 +61,7 @@ func EnumMatchInsensitive[T string
 
 var enumRegexp = regexp.MustCompile(`[^A-Z]+`)
 
-// EnumNormalize normalized string enum values
+// EnumNormalize normalizes string enum values
 func EnumNormalize[T string
 {{- range $Enum := .EnumDefinitions -}}
 {{- if eq $Enum.Schema.GoType "string" }} | {{$Enum.TypeName }}{{ end -}}
