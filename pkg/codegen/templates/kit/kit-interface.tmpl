@@ -52,7 +52,7 @@ return NewLogger(kitlog.NewJSONLogger(kitlog.NewSyncWriter(os.Stdout)), serviceN
 // NewLogger makes a new logger compatible with api.Logger
 func NewLogger(kitlogger kitlog.Logger, serviceName string, kvs ...interface{}) Logger {
 	kvs = append(kvs,
-		"component", serviceName,
+		"service", serviceName,
 		"time", kitlog.DefaultTimestampUTC,
 	)
 

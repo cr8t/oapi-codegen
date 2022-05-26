@@ -1,6 +1,6 @@
 func New(logger api.Logger) api.Service {
 	return &service{
-		logger: logger.With("subsystem", "service"),
+		logger: logger.With("layer", "service"),
 	}
 }
 

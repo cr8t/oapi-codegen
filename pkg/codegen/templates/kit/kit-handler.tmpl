@@ -3,7 +3,7 @@
 func GetRouter(svc Service, logger kitlog.Logger) *mux.Router {
 	 r := mux.NewRouter()
 	 if logger != nil {
-	 	logger = kitlog.With(logger, "subsystem", "httptransport")
+	 	logger = kitlog.With(logger, "layer", "httptransport")
 	 	 r.Use(makeHTTPLoggingMiddleware(logger))
 	 }
 {{range . -}}{{$opid := .OperationId}}

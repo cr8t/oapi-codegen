@@ -1,7 +1,7 @@
 // WithLoggingMiddleware wraps the provided service with logging
 // middleware using the provided logger
 func WithLoggingMiddleware(logger kitlog.Logger, next Service) Service {
-	return loggingMiddleware{kitlog.With(logger, "subsystem", "gokit"), next}
+	return loggingMiddleware{kitlog.With(logger, "layer", "gokit"), next}
 	}
     
 type loggingMiddleware struct {
