@@ -59,4 +59,15 @@ func EnumMatchInsensitive[T string
 	return strings.EqualFold(string(thing1), string(thing2))
 }
 
+var enumRegexp = regexp.MustCompile(`[^A-Z]+`)
+
+// EnumNormalize normalized string enum values
+func EnumNormalize[T string
+{{- range $Enum := .EnumDefinitions -}}
+{{- if eq $Enum.Schema.GoType "string" }} | {{$Enum.TypeName }}{{ end -}}
+{{- end -}}
+](thing1 T) string {
+	return enumRegexp.ReplaceAllString(strings.ToUpper(string(thing1)), "_")
+}
+
 {{end}}
