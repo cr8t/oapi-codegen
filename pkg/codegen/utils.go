@@ -91,10 +91,55 @@ func ToCamelCase(str string) string {
 	return fixCamelCaseAbbrev(n)
 }
 
-var idReplace = regexp.MustCompile(`Id([^a-z]?)`)
+var commonInitialisms = map[string]*regexp.Regexp{
+	"ACL":   regexp.MustCompile("Acl([^a-z]+)"),
+	"API":   regexp.MustCompile("Api([^a-z]+)"),
+	"ASCII": regexp.MustCompile("Ascii([^a-z]+)"),
+	"CPU":   regexp.MustCompile("Cpu([^a-z]+)"),
+	"CSS":   regexp.MustCompile("Css([^a-z]+)"),
+	"DNS":   regexp.MustCompile("Dns([^a-z]+)"),
+	"EOF":   regexp.MustCompile("Eof([^a-z]+)"),
+	"GUID":  regexp.MustCompile("Guid([^a-z]+)"),
+	"HTML":  regexp.MustCompile("Html([^a-z]+)"),
+	"HTTP":  regexp.MustCompile("Http([^a-z]+)"),
+	"HTTPS": regexp.MustCompile("Https([^a-z]+)"),
+	"ID":    regexp.MustCompile("Id([^a-z]+)"),
+	"IP":    regexp.MustCompile("Ip([^a-z]+)"),
+	"JSON":  regexp.MustCompile("Json([^a-z]+)"),
+	"LHS":   regexp.MustCompile("Lhs([^a-z]+)"),
+	"QPS":   regexp.MustCompile("Qps([^a-z]+)"),
+	"RAM":   regexp.MustCompile("Ram([^a-z]+)"),
+	"RHS":   regexp.MustCompile("Rhs([^a-z]+)"),
+	"RPC":   regexp.MustCompile("Rpc([^a-z]+)"),
+	"SLA":   regexp.MustCompile("Sla([^a-z]+)"),
+	"SMTP":  regexp.MustCompile("Smtp([^a-z]+)"),
+	"SQL":   regexp.MustCompile("Sql([^a-z]+)"),
+	"SSH":   regexp.MustCompile("Ssh([^a-z]+)"),
+	"TCP":   regexp.MustCompile("Tcp([^a-z]+)"),
+	"TLS":   regexp.MustCompile("Tls([^a-z]+)"),
+	"TTL":   regexp.MustCompile("Ttl([^a-z]+)"),
+	"UDP":   regexp.MustCompile("Udp([^a-z]+)"),
+	"UI":    regexp.MustCompile("Ui([^a-z]+)"),
+	"UID":   regexp.MustCompile("Uid([^a-z]+)"),
+	"UUID":  regexp.MustCompile("Uuid([^a-z]+)"),
+	"URI":   regexp.MustCompile("Uri([^a-z]+)"),
+	"URL":   regexp.MustCompile("Url([^a-z]+)"),
+	"UTF8":  regexp.MustCompile("Ut([^a-z]+)F8"),
+	"VM":    regexp.MustCompile("Vm([^a-z]+)"),
+	"XML":   regexp.MustCompile("Xml([^a-z]+)"),
+	"XMPP":  regexp.MustCompile("Xmpp([^a-z]+)"),
+	"XSRF":  regexp.MustCompile("Xsrf([^a-z]+)"),
+	"XSS":   regexp.MustCompile("Xss([^a-z]+)"),
+	"OFAC":  regexp.MustCompile("Ofac([^a-z]+)"),
+	"USD":   regexp.MustCompile("Usd([^a-z]+)"),
+	"BTC":   regexp.MustCompile("Btc([^a-z]+)"),
+}
 
 func fixCamelCaseAbbrev(str string) string {
-	return idReplace.ReplaceAllString(str, "ID$1")
+	for rep, re := range commonInitialisms {
+		str = re.ReplaceAllString(str, fmt.Sprintf("%s$1", rep))
+	}
+	return str
 }
 
 // This function returns the keys of the given SchemaRef dictionary in sorted
@@ -958,7 +1003,12 @@ func SanitizeEnumNames(enumNames, enumValues []string) map[string]string {
 
 	for _, p := range deDup {
 		n, v := p[0], p[1]
-		sanitized := SanitizeGoIdentity(SchemaNameToEnumValueName(strings.ToLower(n)))
+
+		if strings.ContainsAny(n, "_- ") {
+			n = strings.ToLower(n)
+		}
+
+		sanitized := SanitizeGoIdentity(SchemaNameToEnumValueName(n))
 
 		if _, dup := dupCheck[sanitized]; !dup {
 			sanitizedDeDup[sanitized] = v
