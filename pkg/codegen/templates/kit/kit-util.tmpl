@@ -1,79 +1,136 @@
-{{define "kit-middleware-call"}}(ctx
+{{define "kit-function-signature-external-params" -}}
+{{range $index, $param := .PathParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{- end -}}
+{{range $index, $param := .QueryParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{- end -}}
+{{range $index, $param := .HeaderParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{- end -}}
+{{range $index, $param := .CookieParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{- end -}}
+{{- end}}
 
+{{define "kit-function-signature-params" -}}
+{{range $index, $param := .PathParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+{{range $index, $param := .QueryParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+{{range $index, $param := .HeaderParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+{{range $index, $param := .CookieParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+{{- end}}
+
+{{define "kit-middleware-call-params" -}}
+{{range $index, $param := .PathParams -}}
+, {{- $param.ParamName}}
+{{- end -}}
+{{range $index, $param := .QueryParams -}}
+, {{- $param.ParamName}}
+{{- end -}}
+{{range $index, $param := .HeaderParams -}}
+, {{- $param.ParamName}}
+{{- end -}}
+{{range $index, $param := .CookieParams -}}
+, {{- $param.ParamName}}
+{{- end -}}
+{{- end}}
+
+{{define "kit-endpoint-call-params" -}}
+{{range $index, $param := .PathParams -}}
+, req.{{- $param.GoName}}
+{{- end -}}
+{{range $index, $param := .QueryParams -}}
+, req.{{- $param.GoName}}
+{{- end -}}
+{{range $index, $param := .HeaderParams -}}
+, req.{{- $param.GoName}}
+{{- end -}}
+{{range $index, $param := .CookieParams -}}
+, req.{{- $param.GoName}}
+{{- end -}}
+{{- end}}
+
+{{define "kit-middleware-call" -}}
+(ctx
+{{- template "kit-middleware-call-params" . -}}
 {{- if .HasBody -}}
-{{range $index, $param := .AllParams -}}
-, {{- $param.ParamName}}
-{{- end -}}
-
-{{range $index, $body := .Bodies -}}
-
-{{- if eq $index 0 -}}
+  {{range $index, $body := .Bodies -}}
+    {{- if eq $index 0 -}}
 , data
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
-
-{{- end -}}
-
-{{- else -}}
-
-{{range $index, $param := .AllParams -}}
-, {{- $param.ParamName}}
-{{- end -}}
-
-{{- end -}}
-
 )
 {{- end}}
 
 {{define "kit-endpoint-call"}}
 {{- $op := . -}}
 (ctx
+{{- template "kit-endpoint-call-params" . -}}
 {{- if .HasBody -}}
-{{range $index, $param := .AllParams -}}
-, req.{{$param.GoName}}
-{{- end -}}
-
-{{range $index, $body := .Bodies -}}
-
-{{- if eq $index 0 -}}
+  {{range $index, $body := .Bodies -}}
+    {{- if eq $index 0 -}}
 , {{if $op.AllParams}}req.Body{{else}}req{{end}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
-
-{{- end -}}
-
-{{- else -}}
-
-{{range $index, $param := .AllParams -}}
-, req.{{- $param.GoName}}
-{{- end -}}
-
-{{- end -}}
-
 )
 {{- end}}
 
-{{define "kit-function-signature"}}(ctx context.Context
-
+{{define "kit-function-signature" -}}
+(ctx context.Context
+{{- template "kit-function-signature-params" . -}}
 {{- if .HasBody -}}
-{{range $index, $param := .AllParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
-{{- end -}}
-
-{{range $index, $body := .Bodies -}}
-
-{{- if eq $index 0 -}}
+  {{range $index, $body := .Bodies -}}
+    {{- if eq $index 0 -}}
 , data {{$body.Schema.GoType}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
-
-{{- end -}}
-
-{{- else -}}
-
-{{range $index, $param := .AllParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
-{{- end -}}
-
-{{- end -}}
-
 ) {{ if not .GetResponseTypeDefinitions}} error {{else -}}
 ( 
 {{- range $index, $return := .GetResponseTypeDefinitions -}}
@@ -84,49 +141,16 @@
 {{- end }}
 {{- end}}
 
-{{define "kit-function-signature-external"}}(ctx context.Context
-
+{{define "kit-function-signature-external" -}}
+(ctx context.Context
+{{- template "kit-function-signature-params" . -}}
 {{- if .HasBody -}}
-{{range $index, $param := .AllParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
-	(eq "int" $param.Schema.GoType)
-	(eq "int32" $param.Schema.GoType)
-	(eq "int64" $param.Schema.GoType)
-	(eq "float64" $param.Schema.GoType)
-	(eq "float32" $param.Schema.GoType)
-	(eq "string" $param.Schema.GoType)
-	(eq "bool" $param.Schema.GoType)) -}}
-api.
-{{- end -}}
-{{$param.Schema.GoType -}}
-{{- end -}}
-
-{{range $index, $body := .Bodies -}}
-
-{{- if eq $index 0 -}}
+  {{range $index, $body := .Bodies -}}
+    {{- if eq $index 0 -}}
 , data api.{{$body.Schema.GoType}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
-
-{{- end -}}
-
-{{- else -}}
-
-{{range $index, $param := .AllParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
-	(eq "int" $param.Schema.GoType)
-	(eq "int32" $param.Schema.GoType)
-	(eq "int64" $param.Schema.GoType)
-	(eq "float64" $param.Schema.GoType)
-	(eq "float32" $param.Schema.GoType)
-	(eq "string" $param.Schema.GoType)
-	(eq "bool" $param.Schema.GoType)) -}}
-api.
-{{- end -}}
-{{$param.Schema.GoType -}}
-{{- end -}}
-
-{{- end -}}
-
 ) {{ if not .GetResponseTypeDefinitions}} error {{else -}}
 ( 
 {{- range $index, $return := .GetResponseTypeDefinitions -}}

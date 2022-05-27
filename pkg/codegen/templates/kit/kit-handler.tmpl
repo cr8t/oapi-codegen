@@ -63,8 +63,6 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
 }
 
 
-type RequestDecoder func (ctx context.Context, r *http.Request) (interface{}, error)
-
 {{range . -}}{{$opid := .OperationId}}
 // Make{{$opid}}Handler makes an http.Handler for the service method {{$opid}}.
 //
@@ -80,16 +78,43 @@ return httptransport.NewServer(
 	)
 }
 
-func decode{{$opid}}Request{{if .QueryParams}}Unimplemented{{end}}(ctx context.Context, r *http.Request) (interface{}, error) {
+var decode{{$opid}}Request httptransport.DecodeRequestFunc = func(ctx context.Context, r *http.Request) (interface{}, error) {
 
 {{ if .HasBody }}
 
-var body {{range $index, $body := .Bodies}}{{if eq $index 0}}{{$body.Schema.GoType}}{{end}}{{end}}
+switch r.Header.Get("content-type") {
+
+{{ range .Bodies }}
+case "{{.ContentType}}":
+var body {{.Schema.GoType}}
+{{ if eq .ContentType "application/json" }}
 if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 apiErr := APIError{Code: http.StatusBadRequest, Message: "decoding request body"}
 return nil, apiErr.Wrap(err)
 }
 return body, nil
+{{ else }}
+return nil, Error(http.StatusNotImplemented, "{{.ContentType}} bodies are not implemented by the generator")
+{{ end }}
+{{ end }}
+default:
+body, err := io.ReadAll(r.Body)
+if err != nil {
+apiErr := APIError{Code: http.StatusInternalServerError, Message: "reading request body"}
+return nil, apiErr.Wrap(err)
+}
+return string(body), nil
+}
+
+
+{{ else if .HasBody }}
+
+body, err := io.ReadAll(r.Body)
+if err != nil {
+apiErr := APIError{Code: http.StatusInternalServerError, Message: "reading request body"}
+return nil, apiErr.Wrap(err)
+}
+return string(body), nil
 
 {{ else if and .PathParams (not .QueryParams)}}
 vars := mux.Vars(r)
@@ -171,14 +196,10 @@ return {{$opid}}Request {
 {{ end }}
 }
 
-{{ if .QueryParams }}
-var decode{{$opid}}Request = decode{{$opid}}RequestUnimplemented
 // SetDecode{{$opid}}Request sets the request decoder for {{$opid}}
-// since it cannot be implemented by the generator
-func SetDecode{{$opid}}Request(fn RequestDecoder) {
+func SetDecode{{$opid}}Request(fn httptransport.DecodeRequestFunc) {
 decode{{$opid}}Request = fn
 }
-{{ end }}
 
 
 {{ end }}

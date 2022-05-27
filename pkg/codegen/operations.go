@@ -654,8 +654,10 @@ func generateDefaultOperationID(opName string, requestPath string, pathOpCount i
 		case http.MethodGet:
 			if parts[1] == "healthz" {
 				operationId = "Health-Check"
-			} else {
+			} else if pathOpCount > 1 {
 				operationId = "Read-" + parts[1] + "-List"
+			} else {
+				operationId = "Read-" + parts[1]
 			}
 		case http.MethodPost:
 			operationId = "Create-" + parts[1]
