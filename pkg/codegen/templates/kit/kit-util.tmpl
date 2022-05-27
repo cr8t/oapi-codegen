@@ -1,0 +1,138 @@
+{{define "kit-middleware-call"}}(ctx
+
+{{- if .HasBody -}}
+{{range $index, $param := .AllParams -}}
+, {{- $param.ParamName}}
+{{- end -}}
+
+{{range $index, $body := .Bodies -}}
+
+{{- if eq $index 0 -}}
+, data
+{{- end -}}
+
+{{- end -}}
+
+{{- else -}}
+
+{{range $index, $param := .AllParams -}}
+, {{- $param.ParamName}}
+{{- end -}}
+
+{{- end -}}
+
+)
+{{- end}}
+
+{{define "kit-endpoint-call"}}
+{{- $op := . -}}
+(ctx
+{{- if .HasBody -}}
+{{range $index, $param := .AllParams -}}
+, req.{{$param.GoName}}
+{{- end -}}
+
+{{range $index, $body := .Bodies -}}
+
+{{- if eq $index 0 -}}
+, {{if $op.AllParams}}req.Body{{else}}req{{end}}
+{{- end -}}
+
+{{- end -}}
+
+{{- else -}}
+
+{{range $index, $param := .AllParams -}}
+, req.{{- $param.GoName}}
+{{- end -}}
+
+{{- end -}}
+
+)
+{{- end}}
+
+{{define "kit-function-signature"}}(ctx context.Context
+
+{{- if .HasBody -}}
+{{range $index, $param := .AllParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+
+{{range $index, $body := .Bodies -}}
+
+{{- if eq $index 0 -}}
+, data {{$body.Schema.GoType}}
+{{- end -}}
+
+{{- end -}}
+
+{{- else -}}
+
+{{range $index, $param := .AllParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+
+{{- end -}}
+
+) {{ if not .GetResponseTypeDefinitions}} error {{else -}}
+( 
+{{- range $index, $return := .GetResponseTypeDefinitions -}}
+{{- if $index }}, {{end -}}
+*{{ $return.Schema.GoType }}
+{{- end -}}
+, error)
+{{- end }}
+{{- end}}
+
+{{define "kit-function-signature-external"}}(ctx context.Context
+
+{{- if .HasBody -}}
+{{range $index, $param := .AllParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{$param.Schema.GoType -}}
+{{- end -}}
+
+{{range $index, $body := .Bodies -}}
+
+{{- if eq $index 0 -}}
+, data api.{{$body.Schema.GoType}}
+{{- end -}}
+
+{{- end -}}
+
+{{- else -}}
+
+{{range $index, $param := .AllParams -}}
+, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{$param.Schema.GoType -}}
+{{- end -}}
+
+{{- end -}}
+
+) {{ if not .GetResponseTypeDefinitions}} error {{else -}}
+( 
+{{- range $index, $return := .GetResponseTypeDefinitions -}}
+{{- if $index }}, {{end -}}
+*api.{{ $return.Schema.GoType }}
+{{- end -}}
+, error)
+{{- end }}
+{{- end}}

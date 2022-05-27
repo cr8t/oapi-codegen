@@ -6,34 +6,7 @@ type Service interface {
 // {{.OperationId}} handles {{.Method}} calls to {{.Path}}
 //
 {{.SummaryAsComment}}
-{{.OperationId}}(ctx context.Context
-
-{{- if .HasBody -}}
-
-{{range $index, $body := .Bodies -}}
-
-{{- if eq $index 0 -}}
-, data {{$body.Schema.GoType}}
-{{- end -}}
-
-{{- end -}}
-
-{{- else -}}
-
-{{range $index, $param := .AllParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
-{{- end -}}
-
-{{- end -}}
-
-) {{ if not .GetResponseTypeDefinitions}} error {{else -}}
-( 
-{{- range $index, $return := .GetResponseTypeDefinitions -}}
-{{- if $index }}, {{end -}}
-*{{ $return.Schema.GoType }}
-{{- end -}}
-, error)
-{{- end }}
+{{.OperationId}}{{template "kit-function-signature" .}}
 {{end}}
 }
 

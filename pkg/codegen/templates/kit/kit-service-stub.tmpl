@@ -10,45 +10,7 @@ type service struct {
 
 {{range . -}}
 {{.SummaryAsComment}}
-func (svc service) {{.OperationId}}(ctx context.Context
-
-{{- if .HasBody -}}
-
-{{range $index, $body := .Bodies -}}
-
-{{- if eq $index 0 -}}
-, data api.{{$body.Schema.GoType}}
-{{- end -}}
-
-{{- end -}}
-
-{{- else -}}
-
-{{range $index, $param := .AllParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}
-{{- if not (or
-	(eq "int" $param.Schema.GoType)
-	(eq "int32" $param.Schema.GoType)
-	(eq "int64" $param.Schema.GoType)
-	(eq "float64" $param.Schema.GoType)
-	(eq "float32" $param.Schema.GoType)
-	(eq "string" $param.Schema.GoType)
-	(eq "bool" $param.Schema.GoType)) -}}
-api.
-{{- end -}}
-{{$param.Schema.GoType -}}
-{{- end -}}
-
-{{- end -}}
-
-) {{ if not .GetResponseTypeDefinitions}} error {{else -}}
-( 
-{{- range $index, $return := .GetResponseTypeDefinitions -}}
-{{- if $index }}, {{end -}}
-*api.{{ $return.Schema.GoType }}
-{{- end -}}
-, error)
-{{- end }} {
+func (svc service) {{.OperationId}}{{template "kit-function-signature-external" .}} {
 {{- if eq .OperationId "HealthCheck" }}
 // any health checking of the service goes here, like checking a
 // database connection

@@ -1,36 +1,37 @@
 {{range .}}{{$opid := .OperationId}}
 
-  {{if not .HasBody }}
-    {{if and .TypeDefinitions .AllParams }}
-	// {{$opid}}Request defines parameters for {{$opid}}.
-  	type {{$opid}}Request struct {
 	
-  	{{range $index, $param := .AllParams -}}
-      {{ $param.GoName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType }}
-    {{ end }}
-
-  	}
-	
-    {{else if .TypeDefinitions }}
-
+    {{if and (.TypeDefinitions) (not .AllParams) (not .HasBody)}}
       {{range .TypeDefinitions}}
 	  // {{$opid}}Request defines parameters for {{$opid}}.
 	  type {{$opid}}Request {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.TypeDecl}}
       {{end}}
+	{{end}}
 
-  	{{else if .AllParams}}
-
+  	{{if and .AllParams (not .HasBody) }}
 	// {{$opid}}Request defines parameters for {{$opid}}.
   	type {{$opid}}Request struct {
   	{{range $index, $param := .AllParams -}}
       {{ $param.GoName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType }}
     {{ end }}
   	}
-	
   	{{end}}
   
-  {{end}}
+  	{{if and .AllParams .HasBody }}
+	// {{$opid}}Request defines parameters for {{$opid}}.
+  	type {{$opid}}Request struct {
+  	{{range $index, $param := .AllParams -}}
+      {{ $param.GoName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType }}
+    {{- end }}
+	
+	{{- range $index, $body := .Bodies }}
+	  {{- if eq $index 0}}
+	  Body {{$body.Schema.GoType}}
+	  {{- end}}
+	{{- end}}
 
-
+  	}
+  	{{end}}
+  
 
 {{end}}

@@ -1069,6 +1069,7 @@ func GenerateGorillaServer(t *template.Template, operations []OperationDefinitio
 // all the wrapper functions around our handlers.
 func GenerateKitServer(t *template.Template, operations []OperationDefinition) (string, error) {
 	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
 		"kit/kit-interface.tmpl",
 		"kit/kit-endpoints.tmpl",
 		"kit/kit-middleware-logging.tmpl",
@@ -1084,6 +1085,7 @@ func GenerateKitServer(t *template.Template, operations []OperationDefinition) (
 // all the wrapper functions around our handlers.
 func GenerateKitServiceStub(t *template.Template, operations []OperationDefinition) (string, error) {
 	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
 		"kit/kit-service-stub.tmpl",
 	}, t, operations)
 }
@@ -1113,6 +1115,7 @@ func GenerateStrictResponses(t *template.Template, responses []ResponseDefinitio
 // all the wrapper functions around our handlers.
 func GenerateKitClient(t *template.Template, operations []OperationDefinition) (string, error) {
 	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
 		"kit/kit-client.tmpl",
 	}, t, operations)
 }

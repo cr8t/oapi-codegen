@@ -9,23 +9,20 @@ req, ok := request.({{(index .Bodies 0).Schema.GoType}})
 {{end}}
 {{if or .AllParams .HasBody}}
 if !ok {
-return nil, Error(http.StatusInternalServerError, "invalid request, expected {{$opid}}Request")
+return nil, Error(http.StatusInternalServerError, "invalid request, expected {{if .AllParams}}{{$opid}}Request{{else if .HasBody}}{{(index .Bodies 0).Schema.GoType}}{{end}}")
 }
 {{end}}
 
 
 {{ if not .GetResponseTypeDefinitions }}
 
-if err := svc.{{$opid}}(ctx{{if or .AllParams .HasBody}}, req{{end}}); err != nil {
+if err := svc.{{$opid}}{{template "kit-endpoint-call" .}}; err != nil {
 return nil, err
 }
 return nil, nil
 
 {{else if .AllParams }}
-res, err := svc.{{$opid}}(ctx, {{range $index, $param := .AllParams -}}
-{{if $index}}, {{end -}}
-req.{{- $param.GoName -}}
-{{- end -}})
+res, err := svc.{{$opid}}{{template "kit-endpoint-call" .}}
 if err != nil {
 return nil, err
 }
@@ -33,7 +30,7 @@ return res, nil
 
 {{else}}
 
-res, err := svc.{{$opid}}(ctx, req)
+res, err := svc.{{$opid}}{{template "kit-endpoint-call" .}}
 if err != nil {
 return nil, err
 }
