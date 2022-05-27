@@ -10,6 +10,7 @@
 	(eq "bool" $param.Schema.GoType)) -}}
 api.
 {{- end -}}
+{{$param.Schema.GoType -}}
 {{- end -}}
 {{range $index, $param := .QueryParams -}}
 , {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
@@ -22,6 +23,7 @@ api.
 	(eq "bool" $param.Schema.GoType)) -}}
 api.
 {{- end -}}
+{{$param.Schema.GoType -}}
 {{- end -}}
 {{range $index, $param := .HeaderParams -}}
 , {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
@@ -34,6 +36,7 @@ api.
 	(eq "bool" $param.Schema.GoType)) -}}
 api.
 {{- end -}}
+{{$param.Schema.GoType -}}
 {{- end -}}
 {{range $index, $param := .CookieParams -}}
 , {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
@@ -46,6 +49,7 @@ api.
 	(eq "bool" $param.Schema.GoType)) -}}
 api.
 {{- end -}}
+{{$param.Schema.GoType -}}
 {{- end -}}
 {{- end}}
 
@@ -143,7 +147,7 @@ api.
 
 {{define "kit-function-signature-external" -}}
 (ctx context.Context
-{{- template "kit-function-signature-params" . -}}
+{{- template "kit-function-signature-external-params" . -}}
 {{- if .HasBody -}}
   {{range $index, $body := .Bodies -}}
     {{- if eq $index 0 -}}

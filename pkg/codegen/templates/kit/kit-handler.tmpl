@@ -63,6 +63,8 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
 }
 
 
+type DecodeRequestFunc httptransport.DecodeRequestFunc
+
 {{range . -}}{{$opid := .OperationId}}
 // Make{{$opid}}Handler makes an http.Handler for the service method {{$opid}}.
 //
@@ -72,13 +74,13 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
 func Make{{$opid}}Handler(svc Service) http.Handler {
 return httptransport.NewServer(
 		make{{$opid}}Endpoint(svc),
-		decode{{$opid}}Request,
+		httptransport.DecodeRequestFunc(decode{{$opid}}Request),
 		encodeResponse,
 		httptransport.ServerErrorEncoder(encodeErrorResponse),
 	)
 }
 
-var decode{{$opid}}Request httptransport.DecodeRequestFunc = func(ctx context.Context, r *http.Request) (interface{}, error) {
+var decode{{$opid}}Request DecodeRequestFunc = func(ctx context.Context, r *http.Request) (interface{}, error) {
 
 {{ if .HasBody }}
 
@@ -197,7 +199,7 @@ return {{$opid}}Request {
 }
 
 // SetDecode{{$opid}}Request sets the request decoder for {{$opid}}
-func SetDecode{{$opid}}Request(fn httptransport.DecodeRequestFunc) {
+func SetDecode{{$opid}}Request(fn DecodeRequestFunc) {
 decode{{$opid}}Request = fn
 }
 
