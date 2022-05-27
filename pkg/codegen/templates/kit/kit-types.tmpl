@@ -53,6 +53,24 @@ func (err APIError) Unwrap() error {
 type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.TypeDecl}}
 {{end}}
 
+// QueryGetSubValue will get a value from a nested "parameter object".
+//
+// This will search the url values based on a few different key
+// schema. For example:
+//
+// `val := QueryGetSubValue[*string](r.URL.Query(), "filter", "search", nil)`
+//
+// will search the query parameters for `search`, `filter.search`, and
+// `filter[search]`.
+//
+// Further nesting is possible by adding a `.` to the `key`
+// parameter. For example:
+//
+// `val := QueryGetSubValue[*string](r.URL.Query(), "filter", "updated_at.since", nil)`
+//
+// will search the query parameters for `updated_at.since`,
+// `filter.updated_at.sinse`, and `filter[updated_at][since]`.
+//
 func QueryGetSubValue[T comparable](values url.Values, prefix, key string, defaultVal T) T {
 	parts := strings.Split(key, ".")
 	keys := []string{
@@ -71,6 +89,15 @@ func QueryGetSubValue[T comparable](values url.Values, prefix, key string, defau
 	return val
 }
 
+// QueryGetValue will try to get a value from the provided url.Values,
+// returning the default value if not found
+//
+// To get a nil value, you must provide a type in the call, otherwise,
+// go will infer the type. For example:
+//
+// `val := QueryGetValue(r.URL.Query(), "foo", "bar")`
+// `nilVal := QueryGetValue[*string](r.URL.Query(), "optional", nil)`
+//
 func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 	urlVal, ok := values[key]
 	if !ok {

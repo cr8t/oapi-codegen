@@ -63,21 +63,24 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
 }
 
 
+type RequestDecoder func (ctx context.Context, r *http.Request) (interface{}, error)
+
 {{range . -}}{{$opid := .OperationId}}
+// Make{{$opid}}Handler makes an http.Handler for the service method {{$opid}}.
+//
+// This is called automatically by GetRouter, but these are exported
+// so that methods can be mounted manually with gorilla mux in the
+// implementation
 func Make{{$opid}}Handler(svc Service) http.Handler {
 return httptransport.NewServer(
 		make{{$opid}}Endpoint(svc),
-		{{ if .QueryParams }}
-		Decode{{$opid}}Request,
-		{{ else }}
 		decode{{$opid}}Request,
-		{{ end }}
 		encodeResponse,
 		httptransport.ServerErrorEncoder(encodeErrorResponse),
 	)
 }
 
-func decode{{$opid}}Request(ctx context.Context, r *http.Request) (interface{}, error) {
+func decode{{$opid}}Request{{if .QueryParams}}Unimplemented{{end}}(ctx context.Context, r *http.Request) (interface{}, error) {
 
 {{ if .HasBody }}
 
@@ -162,15 +165,19 @@ return {{$opid}}Request {
 }, nil
 
 {{ else if .QueryParams }}
-  return nil, Error(http.StatusNotImplemented, "Decode{{$opid}}Request must be implemented by developer")
+  return nil, Error(http.StatusNotImplemented, "Decode{{$opid}}Request must be implemented by developer and set by using SetDecode{{$opid}}Request")
 {{ else }}
   return nil, nil
 {{ end }}
 }
 
 {{ if .QueryParams }}
-// Decode{{$opid}}Request must be implemented by the developer (for now)
-var Decode{{$opid}}Request = decode{{$opid}}Request
+var decode{{$opid}}Request = decode{{$opid}}RequestUnimplemented
+// SetDecode{{$opid}}Request sets the request decoder for {{$opid}}
+// since it cannot be implemented by the generator
+func SetDecode{{$opid}}Request(fn RequestDecoder) {
+decode{{$opid}}Request = fn
+}
 {{ end }}
 
 
