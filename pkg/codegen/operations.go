@@ -637,7 +637,9 @@ func generateDefaultOperationID(opName string, requestPath string, pathOpCount i
 
 	pathParamCount := getPathParamCount(parts)
 
-	if pathParamCount > 1 {
+	if pathParamCount > 1 &&
+		(len(parts) < 3 ||
+			(len(parts) >= 3 && parts[2] != "{id}")) {
 		if isSinglePathWithParams(parts) {
 			return ToCamelCase(operationId + "-" + parts[1]), nil
 		}
@@ -677,13 +679,25 @@ func generateDefaultOperationID(opName string, requestPath string, pathOpCount i
 		default:
 			operationId = operationId + "-" + parts[1]
 		}
-		for _, part := range parts[3:] {
+
+		var bits []string
+		var by string
+		if parts[2] != "{id}" {
+			bits = parts[3:]
+			by = parts[2]
+		} else if len(parts) >= 5 && parts[2] == "{id}" && isPathParam(parts[4]) {
+			bits = parts[3:4]
+			by = parts[4]
+		} else {
+			bits = parts[3:]
+		}
+		for _, part := range bits {
 			if part != "" {
 				operationId = operationId + "-" + part
 			}
 		}
-		if parts[2] != "{id}" {
-			operationId += "-by-" + parts[2]
+		if by != "" {
+			operationId += "-by-" + by
 		}
 
 	} else if pathParamCount == 0 {
