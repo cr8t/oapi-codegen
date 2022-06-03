@@ -83,12 +83,13 @@ return httptransport.NewServer(
 var decode{{$opid}}Request DecodeRequestFunc = func(ctx context.Context, r *http.Request) (interface{}, error) {
 
 {{ if .HasBody }}
-
-switch r.Header.Get("content-type") {
+contentType := r.Header.Get("content-type")
+switch contentType {
 
 {{ range .Bodies }}
-case "{{.ContentType}}":
+case "{{.ContentType}}"{{ if .Default }}, ""{{end}}:
 var body {{.Schema.GoType}}
+
 {{ if eq .ContentType "application/json" }}
 if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 apiErr := APIError{Code: http.StatusBadRequest, Message: "decoding request body"}
@@ -98,32 +99,11 @@ return body, nil
 {{ else }}
 return nil, Error(http.StatusNotImplemented, "{{.ContentType}} bodies are not implemented by the generator")
 {{ end }}
+
 {{ end }}
 
 default:
-{{ range .Bodies }}
-
-{{ if .Default }}
-
-{{ if eq .ContentType "application/json" }}
-var body {{.Schema.GoType}}
-if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-apiErr := APIError{Code: http.StatusBadRequest, Message: "decoding request body"}
-return nil, apiErr.Wrap(err)
-}
-return body, nil
-{{ else }}
-
-body, err := io.ReadAll(r.Body)
-if err != nil {
-apiErr := APIError{Code: http.StatusInternalServerError, Message: "reading request body"}
-return nil, apiErr.Wrap(err)
-}
-return string(body), nil
-{{end}}
-
-{{end}}
-{{end}}
+return nil, Errorf(http.StatusBadRequest, "'content-type: %s' not supported", contentType)
 }
 
 {{ else if .HasBody }}
