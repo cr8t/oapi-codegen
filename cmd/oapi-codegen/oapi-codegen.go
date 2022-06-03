@@ -130,6 +130,17 @@ func main() {
 	if flagOldConfigStyle {
 		oldConfigStyle = &flagOldConfigStyle
 	}
+	cfg := configFromFlags()
+
+	// If the package name has not been specified, we will use the name of the
+	// swagger file.
+	if cfg.PackageName == "" {
+		path := flag.Arg(0)
+		baseName := filepath.Base(path)
+		// Split the base name on '.' to get the first part of the file.
+		nameParts := strings.Split(baseName, ".")
+		cfg.PackageName = strings.ToLower(codegen.ToCamelCase(nameParts[0]))
+	}
 
 	// We don't know yet, so keep looking. Try to parse the configuration file,
 	// if given.
