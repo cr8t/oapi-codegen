@@ -130,9 +130,13 @@ var commonInitialisms = map[string]*regexp.Regexp{
 	"XMPP":  regexp.MustCompile("Xmpp([^a-z]+|$)"),
 	"XSRF":  regexp.MustCompile("Xsrf([^a-z]+|$)"),
 	"XSS":   regexp.MustCompile("Xss([^a-z]+|$)"),
+	"OAuth": regexp.MustCompile("Oauth([^a-z]+|$)"),
 	"OFAC":  regexp.MustCompile("Ofac([^a-z]+|$)"),
+	"NASA":  regexp.MustCompile("Nasa([^a-z]+|$)"),
 	"USD":   regexp.MustCompile("Usd([^a-z]+|$)"),
+	"EUR":   regexp.MustCompile("Eur([^a-z]+|$)"),
 	"BTC":   regexp.MustCompile("Btc([^a-z]+|$)"),
+	"ETH":   regexp.MustCompile("Eth([^a-z]+|$)"),
 }
 
 func fixCamelCaseAbbrev(str string) string {
