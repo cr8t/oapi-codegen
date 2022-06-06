@@ -1,3 +1,4 @@
+// goflags -build
 package codegen
 
 import (

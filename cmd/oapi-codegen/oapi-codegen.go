@@ -226,6 +226,7 @@ func main() {
 			}
 		}
 
+<<<<<<< HEAD
 		if err := updateConfigFromFlags(&opts); err != nil {
 			errExit("error processing flags: %v\n", err)
 		}
@@ -267,11 +268,14 @@ func main() {
 		return
 	}
 
+=======
+>>>>>>> 331a767 (break up output to multiple files)
 	swagger, err := util.LoadSwagger(flag.Arg(0))
 	if err != nil {
 		errExit("error loading swagger spec in %s\n: %s", flag.Arg(0), err)
 	}
 
+<<<<<<< HEAD
 	code, err := codegen.Generate(swagger, opts.Configuration)
 	if err != nil {
 		errExit("error generating code: %s\n", err)
@@ -285,6 +289,21 @@ func main() {
 	} else {
 		fmt.Print(code)
 	}
+=======
+	templates, err := loadTemplateOverrides(cfg.TemplatesDir)
+	if err != nil {
+		errExit("error loading template overrides: %s\n", err)
+	}
+	opts.UserTemplates = templates
+
+	opts.ImportMapping = cfg.ImportMapping
+	opts.OldMergeSchemas = cfg.OldAllOfOutput
+
+	if _, err := codegen.Generate(swagger, cfg.PackageName, opts); err != nil {
+		errExit("error generating code: %s\n", err)
+	}
+
+>>>>>>> 331a767 (break up output to multiple files)
 }
 
 func loadTemplateOverrides(templatesDir string) (map[string]string, error) {
