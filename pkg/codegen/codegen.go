@@ -484,6 +484,12 @@ func formatAndWrite(file string, w *bufio.Writer, buf *bytes.Buffer) error {
 		return goCode, nil
 	}
 
+	outBytes, err := imports.Process(file, []byte(goCode), nil)
+	if err != nil {
+		log.Printf("error formatting go code for %s: %s", file, err)
+		outBytes = []byte(goCode)
+	}
+
 	outBytes, err := imports.Process(opts.PackageName+".go", []byte(goCode), nil)
 	if err != nil {
 		return "", fmt.Errorf("error formatting Go code %s: %w", goCode, err)

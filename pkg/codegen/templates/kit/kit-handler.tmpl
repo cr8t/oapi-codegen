@@ -1,15 +1,18 @@
+type RouterOptions struct {
+Prefix string
+NotFoundHandler http.Handler
+}
+
 // GetRouter returns a github.com/gorilla/mux router with the routes
 // in the spec already set up
-func GetRouter(svc Service, logger kitlog.Logger) *mux.Router {
+func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) *mux.Router {
 	 r := mux.NewRouter()
 	 if logger != nil {
 	 	logger = kitlog.With(logger, "layer", "httptransport")
 	 	 r.Use(makeHTTPLoggingMiddleware(logger))
 	 }
-{{range . -}}{{$opid := .OperationId}}
-	 r.Handle("{{.Path}}", Make{{$opid}}Handler(svc)).Methods("{{.Method}}")
-{{end}}
-	 r.NotFoundHandler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	prefix := ""
+	var notFoundHandler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	 begin := time.Now()
 	   encodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
 	duration := time.Since(begin)
@@ -24,6 +27,27 @@ func GetRouter(svc Service, logger kitlog.Logger) *mux.Router {
 		)
 	 }
 	 })
+	if opts != nil {
+		if opts.Prefix != "" {
+			prefix = opts.Prefix
+		}
+		if prefix[0] != '/' {
+			prefix = "/" + prefix
+		}
+		if prefix[len(prefix)-1] == '/' {
+			prefix = prefix[0:len(prefix)-1]
+		}
+
+		if opts.NotFoundHandler != nil {
+		   notFoundHandler = opts.NotFoundHandler
+		}
+	}
+	
+{{range . -}}{{$opid := .OperationId}}
+	 r.Handle(fmt.Sprintf("%s{{.Path}}", prefix), Make{{$opid}}Handler(svc)).Methods("{{.Method}}")
+{{end}}
+	
+	 r.NotFoundHandler = notFoundHandler
 	 return r
 }
 
