@@ -176,6 +176,7 @@ param, err := strconv.ParseInt({{.ParamName}}Str, 10, 64)
 if err != nil {
   return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
 }
+{{.ParamName}} = &param
     {{if not .Required}}
 }
     {{end}}
@@ -190,6 +191,7 @@ param, err := strconv.ParseFloat({{.ParamName}}Str, 64)
 if err != nil {
   return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', double required")
 }
+{{.ParamName}} = &param
     {{if not .Required}}
 }
     {{end}}
