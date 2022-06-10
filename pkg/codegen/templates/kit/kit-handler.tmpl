@@ -167,6 +167,20 @@ if err != nil {
 }
     {{end}}
 
+  {{else if eq .Schema.GoType "int64"}}
+  
+    {{if not .Required}}
+if ok {
+    {{end}}
+param, err := strconv.ParseInt({{.ParamName}}Str, 10, 64)
+if err != nil {
+  return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
+}
+    {{if not .Required}}
+}
+    {{end}}
+
+
   {{else if eq .Schema.GoType "float64"}}
   
     {{if not .Required}}
