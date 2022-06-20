@@ -134,7 +134,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 		  case *int:
 		  	   ret = &val
 		}
-	case int, *int:
+	case int, *int, uint, *uint:
 	    val, err := strconv.Atoi(urlVal[0])
 		if err != nil {
 			return ret.(T)
@@ -143,6 +143,22 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 		  case int:
 		  	   ret = val
 		  case *int:
+		  	   ret = &val
+		  case uint:
+		  	   ret = uint(val)
+		  case *uint:
+               uval = uint(val)
+		  	   ret = &uval
+		}
+	case int64, *int64:
+	    val, err := strconv.ParseInt(urlVal[0], 10, 64)
+		if err != nil {
+			return ret.(T)
+		}
+		switch any(defaultVal).(type) {
+		  case int64:
+		  	   ret = val
+		  case *int64:
 		  	   ret = &val
 		}
 	case float64, *float64:
