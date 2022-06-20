@@ -3,11 +3,17 @@ type Logger interface {
 	With(kvs ...interface{}) Logger
 	Msgf(format string, args ...interface{}) error
 	Msg(msg string, kvs ...interface{}) error
+	Ctx(context.Context) context.Context
 }
+
+type contextKeyLogger string
+
+const contextKeyLoggerKVs contextKeyLogger = "oapigen-logger-kvs"
+const contextKeyLoggerServiceNames contextKeyLogger = "oapigen-logger-service-name"
 
 // NewJSONLogger makes a new JSON logger compatible with api.Logger using kitlog.NewSyncWriter(os.Stdout)
 func NewJSONLogger(serviceName string, kvs ...interface{}) Logger {
-return NewLogger(kitlog.NewJSONLogger(kitlog.NewSyncWriter(os.Stdout)), serviceName)
+	return NewLogger(kitlog.NewJSONLogger(kitlog.NewSyncWriter(os.Stdout)), serviceName)
 }
 
 // NewLogger makes a new logger compatible with api.Logger
@@ -29,11 +35,39 @@ func NewLogger(kitlogger kitlog.Logger, serviceName string, kvs ...interface{}) 
 
 	kitlogger = kitlog.With(kitlogger, kvs...)
 
-	return logger{kitlogger}
+	return logger{
+		logger: kitlogger,
+		kvs:    kvs,
+	}
+}
+
+func ContextLog(ctx context.Context) Logger {
+	ctxVal := ctx.Value(contextKeyLoggerKVs)
+
+	var (
+		kvs []interface{}
+		ok  bool
+	)
+	if kvs, ok = ctxVal.([]interface{}); !ok {
+		kvs = []interface{}{}
+	}
+
+	kitlogger := kitlog.NewJSONLogger(kitlog.NewSyncWriter(os.Stdout))
+
+	return logger{
+		logger: kitlog.With(kitlogger, kvs...),
+		kvs:    kvs,
+	}
+
 }
 
 type logger struct {
 	logger kitlog.Logger
+	kvs    []interface{}
+}
+
+func (lg logger) Ctx(ctx context.Context) context.Context {
+	return context.WithValue(ctx, contextKeyLoggerKVs, lg.kvs)
 }
 
 func (lg logger) Log(kvs ...interface{}) error {
@@ -42,7 +76,10 @@ func (lg logger) Log(kvs ...interface{}) error {
 
 func (lg logger) With(kvs ...interface{}) Logger {
 
-	return logger{kitlog.With(lg.logger, kvs...)}
+	return logger{
+		logger: kitlog.With(lg.logger, kvs...),
+		kvs:    append(lg.kvs, kvs...),
+	}
 }
 
 func (lg logger) Msgf(format string, args ...interface{}) error {
