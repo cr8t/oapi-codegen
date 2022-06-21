@@ -147,7 +147,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 		  case uint:
 		  	   ret = uint(val)
 		  case *uint:
-               uval = uint(val)
+               uval := uint(val)
 		  	   ret = &uval
 		}
 	case int64, *int64:
