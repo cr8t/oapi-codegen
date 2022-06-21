@@ -131,7 +131,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
         } else {
 	      val, err = strconv.ParseBool(urlVal[0])
 		  if err != nil {
-	    		return ret.(T)
+	    		return defaultVal
 		  }
         }
 		switch any(defaultVal).(type) {
@@ -143,7 +143,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 	case int, *int, uint, *uint:
 	    val, err := strconv.Atoi(urlVal[0])
 		if err != nil {
-			return ret.(T)
+			return defaultVal
 		}
 		switch any(defaultVal).(type) {
 		  case int:
@@ -159,7 +159,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 	case int64, *int64:
 	    val, err := strconv.ParseInt(urlVal[0], 10, 64)
 		if err != nil {
-			return ret.(T)
+			return defaulVal
 		}
 		switch any(defaultVal).(type) {
 		  case int64:
@@ -170,7 +170,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 	case float64, *float64:
 	    val, err := strconv.ParseFloat(urlVal[0], 64)
 		if err != nil {
-			return ret.(T)
+			return defaultVal
 		}
 		switch any(defaultVal).(type) {
 		  case float64:
@@ -194,20 +194,26 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 	(eq "int64" .Schema.GoType)) }}
 	    val, err := strconv.ParseInt(urlVal[0], 10, 64)
 		if err != nil {
-			return ret.(T)
+			return defaultVal
 		}
 {{- else if (or
 	(eq "float64" .Schema.GoType)
 	(eq "float32" .Schema.GoType)) }}
 	    val, err := strconv.ParseFloat(urlVal[0], 64)
 		if err != nil {
-			return ret.(T)
+			return defaultVal
 		}
 {{- else if (eq "bool" .Schema.GoType) }}
-	    val, err := strconv.ParseBool(urlVal[0])
-		if err != nil {
-			return ret.(T)
-		}
+        var val bool
+        var err error
+        if urlVal[0] == "" {
+          val = true
+        } else {
+	      val, err = strconv.ParseBool(urlVal[0])
+		  if err != nil {
+	    		return defaultVal
+		  }
+        }
 {{- else }}
 		val := urlVal[0]
 {{- end}}
@@ -222,7 +228,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 {{end}}
 
     }
-	return ret.(T)
+	return defaultVal
 
 }
 
