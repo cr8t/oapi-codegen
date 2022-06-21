@@ -159,7 +159,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 	case int64, *int64:
 	    val, err := strconv.ParseInt(urlVal[0], 10, 64)
 		if err != nil {
-			return defaulVal
+			return defaultVal
 		}
 		switch any(defaultVal).(type) {
 		  case int64:
