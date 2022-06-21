@@ -129,9 +129,9 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 			return ret.(T)
 		}
 		switch any(defaultVal).(type) {
-		  case int:
+		  case bool:
 		  	   ret = val
-		  case *int:
+		  case *bool:
 		  	   ret = &val
 		}
 	case int, *int, uint, *uint:
