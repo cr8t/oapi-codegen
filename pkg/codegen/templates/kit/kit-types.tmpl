@@ -124,16 +124,22 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 		}
 		ret = ints
 	case bool, *bool:
-	    val, err := strconv.ParseBool(urlVal[0])
-		if err != nil {
-			return ret.(T)
-		}
+        var val bool
+        var err error
+        if urlVal[0] == "" {
+          val := true
+        } else {
+	      val, err = strconv.ParseBool(urlVal[0])
+		  if err != nil {
+	    		return ret.(T)
+		  }
+        }
 		switch any(defaultVal).(type) {
 		  case bool:
 		  	   ret = val
 		  case *bool:
 		  	   ret = &val
-		}
+ 		}
 	case int, *int, uint, *uint:
 	    val, err := strconv.Atoi(urlVal[0])
 		if err != nil {
