@@ -127,7 +127,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
         var val bool
         var err error
         if urlVal[0] == "" {
-          val := true
+          val = true
         } else {
 	      val, err = strconv.ParseBool(urlVal[0])
 		  if err != nil {
