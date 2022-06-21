@@ -228,7 +228,7 @@ func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
 {{end}}
 
     }
-	return defaultVal
+	return ret.(T)
 
 }
 
