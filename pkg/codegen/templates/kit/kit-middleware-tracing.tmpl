@@ -20,20 +20,29 @@ type tracingMiddleware struct {
 {{range . -}}{{$opid := .OperationId}}
 
 func (mw tracingMiddleware) {{$opid}}{{template "kit-function-signature" .}} {
+{{ if not (eq $opid "HealthCheck") }}
+
 	var (
 		span *trace.Span
 		err error
 	)
 	ctx, span = trace.StartSpan(ctx, "{{$opid}}")
-	defer span.End()
-
+	
 {{ if not .GetResponseTypeDefinitions }}
    err = mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+   span.End()
    return err
 {{else}}
    output, err := mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+   span.End()
    return output, err
 {{end}}
+
+
+{{else}}
+    return mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+{{end}}
+
 
 }
 {{end}}
