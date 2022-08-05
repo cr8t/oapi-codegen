@@ -61,12 +61,19 @@ func LowercaseFirstCharacter(str string) string {
 // use `., -, +, :, ;, _, ~, ' ', (, ), {, }, [, ]` as valid delimiters for words.
 // So, "word.word-word+word:word;word_word~word word(word)word{word}[word]"
 // would be converted to WordWordWordWordWordWordWordWordWordWordWordWordWord
+func ToPascalCase(str string) string {
+	return toCamelorPascalCase(str, true)
+}
 func ToCamelCase(str string) string {
+	return toCamelorPascalCase(str, false)
+}
+
+func toCamelorPascalCase(str string, capFirst bool) string {
 	separators := "-#@!$&=.+:;_~ (){}[]"
 	s := strings.Trim(str, " ")
 
 	n := ""
-	capNext := true
+	capNext := capFirst
 	for _, v := range s {
 		if unicode.IsUpper(v) {
 			n += string(v)
@@ -1119,11 +1126,11 @@ func typeNamePrefix(name string) (prefix string) {
 // valid in Go
 
 func SchemaNameToTypeName(name string) string {
-	return typeNamePrefix(name) + ToCamelCase(name)
+	return typeNamePrefix(name) + ToPascalCase(name)
 }
 
 func SchemaNameToEnumValueName(name string) string {
-	return typeNamePrefix(name) + ToCamelCase(strings.ReplaceAll(name, "_", "-"))
+	return typeNamePrefix(name) + ToPascalCase(strings.ReplaceAll(name, "_", "-"))
 }
 
 // According to the spec, additionalProperties may be true, false, or a
@@ -1147,7 +1154,7 @@ func SchemaHasAdditionalProperties(schema *openapi3.Schema) bool {
 // type name.
 func PathToTypeName(path []string) string {
 	for i, p := range path {
-		path[i] = ToCamelCase(p)
+		path[i] = ToPascalCase(p)
 	}
 	return strings.Join(path, "_")
 }

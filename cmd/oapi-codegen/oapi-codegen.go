@@ -139,7 +139,7 @@ func main() {
 		baseName := filepath.Base(path)
 		// Split the base name on '.' to get the first part of the file.
 		nameParts := strings.Split(baseName, ".")
-		cfg.PackageName = strings.ToLower(codegen.ToCamelCase(nameParts[0]))
+		cfg.PackageName = strings.ToLower(codegen.ToPascalCase(nameParts[0]))
 	}
 
 	// We don't know yet, so keep looking. Try to parse the configuration file,

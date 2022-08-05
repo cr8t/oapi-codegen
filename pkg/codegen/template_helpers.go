@@ -289,7 +289,7 @@ var TemplateFunctions = template.FuncMap{
 	"lcFirst":                    LowercaseFirstCharacter,
 	"ucFirst":                    UppercaseFirstCharacter,
 	"ucFirstWithPkgName":         UppercaseFirstCharacterWithPkgName,
-	"camelCase":                  ToCamelCase,
+	"camelCase":                  ToPascalCase,
 	"genResponsePayload":         genResponsePayload,
 	"genResponseTypeName":        genResponseTypeName,
 	"genResponseUnmarshal":       genResponseUnmarshal,
