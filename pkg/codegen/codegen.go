@@ -283,7 +283,20 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 		return nil, fmt.Errorf("error generating imports: %w", err)
 	}
 
+	pkgDocOut, err := GeneratePkgDoc(t, externalImports, packageName)
+	if err != nil {
+		return nil, fmt.Errorf("error generating imports: %w", err)
+	}
+
 	for file, w := range writers {
+		if file == fileService {
+			_, err = w.WriteString(pkgDocOut)
+			if err != nil {
+				return nil, fmt.Errorf("error writing package doc to service file: %w", err)
+			}
+
+		}
+
 		log.Printf("writing imports to buffer for %s", file)
 		_, err = w.WriteString(importsOut)
 		if err != nil {
@@ -962,6 +975,12 @@ func GenerateImports(t *template.Template, externalImports []string, packageName
 	return GenerateTemplates([]string{"imports.tmpl"}, t, context)
 }
 
+// / GeneratePkgDoc generates documentation for the package
+func GeneratePkgDoc(t *template.Template, externalImports []string, packageName string) (string, error) {
+	context := getHeaderContext(packageName)
+	return GenerateTemplates([]string{"package-doc.tmpl"}, t, context)
+}
+
 // GenerateAdditionalPropertyBoilerplate generates all the glue code which provides
 // the API for interacting with additional properties and JSON-ification
 func GenerateAdditionalPropertyBoilerplate(t *template.Template, typeDefs []TypeDefinition) (string, error) {
@@ -990,6 +1009,8 @@ func GenerateAdditionalPropertyBoilerplate(t *template.Template, typeDefs []Type
 	return GenerateTemplates([]string{"additional-properties.tmpl"}, t, context)
 }
 
+// Generate all the glue code which provides the API for interacting with
+// additional properties and JSON-ification
 func GenerateUnionBoilerplate(t *template.Template, typeDefs []TypeDefinition) (string, error) {
 	var filteredTypes []TypeDefinition
 	for _, t := range typeDefs {
