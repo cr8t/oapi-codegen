@@ -18,6 +18,12 @@ func Errorf(code int, format string, args ...interface{}) error {
      return APIError{Code: code, Message: fmt.Sprintf(format, args...)}
 }
 
+// Errorw returns a new APIError with the code and message and
+// wrapping the supplied error
+func Errorw(code int, message string, err error) error {
+     return (APIError{Code: code, Message: message}).Wrap(err)
+}
+
 func (err APIError) Error() string {
      if err.err != nil {
         return fmt.Sprintf("[%d] %s: %s", err.Code, err.Message, err.err)
