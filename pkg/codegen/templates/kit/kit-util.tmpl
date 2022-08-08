@@ -1,6 +1,6 @@
 {{define "kit-function-signature-external-params" -}}
 {{range $index, $param := .PathParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{- if not (or
 	(eq "int" $param.Schema.GoType)
 	(eq "int32" $param.Schema.GoType)
 	(eq "int64" $param.Schema.GoType)
@@ -13,7 +13,7 @@ api.
 {{$param.Schema.GoType -}}
 {{- end -}}
 {{range $index, $param := .QueryParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{- if not (or
 	(eq "int" $param.Schema.GoType)
 	(eq "int32" $param.Schema.GoType)
 	(eq "int64" $param.Schema.GoType)
@@ -26,7 +26,7 @@ api.
 {{$param.Schema.GoType -}}
 {{- end -}}
 {{range $index, $param := .HeaderParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{- if not (or
 	(eq "int" $param.Schema.GoType)
 	(eq "int32" $param.Schema.GoType)
 	(eq "int64" $param.Schema.GoType)
@@ -39,7 +39,7 @@ api.
 {{$param.Schema.GoType -}}
 {{- end -}}
 {{range $index, $param := .CookieParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{- if not (or
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{- if not (or
 	(eq "int" $param.Schema.GoType)
 	(eq "int32" $param.Schema.GoType)
 	(eq "int64" $param.Schema.GoType)
@@ -55,31 +55,31 @@ api.
 
 {{define "kit-function-signature-params" -}}
 {{range $index, $param := .PathParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
 {{- end -}}
 {{range $index, $param := .QueryParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
 {{- end -}}
 {{range $index, $param := .HeaderParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
 {{- end -}}
 {{range $index, $param := .CookieParams -}}
-, {{- $param.ParamName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
 {{- end -}}
 {{- end}}
 
 {{define "kit-middleware-call-params" -}}
 {{range $index, $param := .PathParams -}}
-, {{- $param.ParamName}}
+, {{- $param.GoVariableName}}
 {{- end -}}
 {{range $index, $param := .QueryParams -}}
-, {{- $param.ParamName}}
+, {{- $param.GoVariableName}}
 {{- end -}}
 {{range $index, $param := .HeaderParams -}}
-, {{- $param.ParamName}}
+, {{- $param.GoVariableName}}
 {{- end -}}
 {{range $index, $param := .CookieParams -}}
-, {{- $param.ParamName}}
+, {{- $param.GoVariableName}}
 {{- end -}}
 {{- end}}
 
