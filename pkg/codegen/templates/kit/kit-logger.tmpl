@@ -13,7 +13,7 @@ const contextKeyLoggerServiceNames contextKeyLogger = "oapigen-logger-service-na
 
 // NewJSONLogger makes a new JSON logger compatible with api.Logger using kitlog.NewSyncWriter(os.Stdout)
 func NewJSONLogger(serviceName string, kvs ...interface{}) Logger {
-	return NewLogger(kitlog.NewJSONLogger(kitlog.NewSyncWriter(os.Stdout)), serviceName)
+	return NewLogger(kitlog.NewJSONLogger(kitlog.NewSyncWriter(os.Stdout)), serviceName, kvs...)
 }
 
 // NewLogger makes a new logger compatible with api.Logger
