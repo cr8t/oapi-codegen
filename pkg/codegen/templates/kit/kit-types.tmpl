@@ -2,47 +2,66 @@
 // methods and is intended to be used as a return from service methods
 // when a non 500 return code is needed
 type APIError struct {
-     Code int `json:"code,omitempty"`
+     Code string `json:"code,omitempty"`
+     Status int `json:"status,omitempty"`
      Message string `json:"message,omitempty"`
      err error
 }
 
 // Error returns a new APIError with the code and message indicated
-func Error(code int, message string) error {
-     return APIError{Code: code, Message: message}
+func Error(status int, message string) error {
+     return APIError{Status: status, Message: message}
 }
 
 // Errorf returns a new APIError with the code and message derived
 // from the format string and arguments
-func Errorf(code int, format string, args ...interface{}) error {
-     return APIError{Code: code, Message: fmt.Sprintf(format, args...)}
+func Errorf(status int, format string, args ...interface{}) error {
+     return APIError{Status: status, Message: fmt.Sprintf(format, args...)}
 }
 
 // Errorw returns a new APIError with the code and message and
 // wrapping the supplied error
-func Errorw(code int, message string, err error) error {
-     return (APIError{Code: code, Message: message}).Wrap(err)
+func Errorw(status int, message string, err error) error {
+     return (APIError{Status: status, Message: message}).Wrap(err)
 }
 
 func (err APIError) Error() string {
-     if err.err != nil {
-        return fmt.Sprintf("[%d] %s: %s", err.Code, err.Message, err.err)
+     var codes []string
+     if err.Code != "" {
+     codes = append(codes, err.Code)
      }
-     return fmt.Sprintf("[%d] %s", err.Code, err.Message)
+     if err.Status != 0 {
+     codes = append(codes, fmt.Sprint(err.Status))
+     }
+     codeStr := ""
+     if len(codes) > 0 {
+     codeStr = fmt.Sprintf("[%s] ", strings.Join(codes, "/"))
+     }
+     if err.err != nil {
+        return fmt.Sprintf("%s%s: %s", codeStr, err.Message, err.err)
+     }
+     return fmt.Sprintf("%s%s", codeStr, err.Message)
 }
 
 func (err APIError) StatusCode() int {
-     return err.Code
+     return err.Status
 }
 
 func (err APIError) MarshalJSON() ([]byte, error) {
-     var message string
+
+     data := map[string]interface{}{}
+     data["error"] = err.Message
      if err.err != nil {
-        message = fmt.Sprintf("%s: %s", err.Message, err.err)
-     } else {
-       message = err.Message
+          data["details"] = err.err.Error()
      }
-     return []byte(fmt.Sprintf(`{"error": "%s"}`, message)), nil
+     if err.Code != "" {
+          data["code"] = err.Code
+     }     
+     if err.Status != 0 {
+          data["status"] = err.Status
+     }     
+
+return json.Marshal(data)
 }
 
 func (err APIError) Wrap(towrap error) error {

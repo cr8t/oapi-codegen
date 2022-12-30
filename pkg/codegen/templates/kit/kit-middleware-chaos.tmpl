@@ -16,7 +16,7 @@ var GetChaosError func() error  = getChaosError
 
 func getChaosError() error {
 code := ChaosStatusCodes[rand.Intn(len(ChaosStatusCodes))]
-err := APIError{Code: code, Message: http.StatusText(code)}
+err := APIError{Status: code, Message: http.StatusText(code)}
 return err.Wrap(ErrChaos)
 }
 
