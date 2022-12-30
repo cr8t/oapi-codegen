@@ -3,6 +3,7 @@ package codegen
 import (
 	"errors"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
@@ -11,9 +12,9 @@ import (
 // Schema describes an OpenAPI schema, with lots of helper fields to use in the
 // templating engine.
 type Schema struct {
-	GoType  string  // The Go type needed to represent the schema
-	RefType string  // If the type has a type name, this is set
-	Ref     *Schema // the schema of the referenced type
+	GoType    string // The Go type needed to represent the schema
+	RefType   string // If the type has a type name, this is set
+	RefGoType string // The Go type of the ref type
 
 	ArrayType *Schema // The schema of array element
 
@@ -351,6 +352,11 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 			DefineViaAlias: true,
 		}
 
+		outSchema.RefGoType, err = resolveGoType(schema.Format, schema.Type)
+		if err != nil {
+			log.Println("error resolving go type for ref:", sref.Ref)
+		}
+
 		for _, scm := range schemas {
 			new, err := generateProperties(scm, path, outSchema)
 			if err != nil {
@@ -605,13 +611,86 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 	return outSchema, nil
 }
 
+func resolveGoType(f, t string) (string, error) {
+	switch t {
+	case "array":
+		return "array", nil
+	case "integer":
+		// We default to int if format doesn't ask for something else.
+		switch f {
+		case "int64":
+			return "int64", nil
+		case "int32":
+			return "int32", nil
+		case "int16":
+			return "int16", nil
+		case "int8":
+			return "int8", nil
+		case "int":
+			return "int", nil
+		case "uint64":
+			return "uint64", nil
+		case "uint32":
+			return "uint32", nil
+		case "uint16":
+			return "uint16", nil
+		case "uint8":
+			return "uint8", nil
+		case "uint":
+			return "uint", nil
+		case "":
+			return "int", nil
+		}
+		return "", fmt.Errorf("invalid integer format: %s", f)
+	case "number":
+		// We default to float for "number"
+		switch f {
+		case "double":
+			return "float64", nil
+		case "float", "":
+			return "float32", nil
+		}
+		return "", fmt.Errorf("invalid number format: %s", f)
+	case "boolean":
+		if f != "" {
+			return "", fmt.Errorf("invalid format (%s) for boolean", f)
+		}
+		return "bool", nil
+	case "string":
+		// Special case string formats here.
+		switch f {
+		case "byte":
+			return "[]byte", nil
+		case "email":
+			return "openapi_types.Email", nil
+		case "date":
+			return "openapi_types.Date", nil
+		case "date-time":
+			return "time.Time", nil
+		case "json":
+			return "json.RawMessage", nil
+		case "uuid":
+			return "openapi_types.UUID", nil
+		default:
+			// All unrecognized formats are simply a regular string.
+			return "string", nil
+		}
+	}
+
+	return "", fmt.Errorf("unhandled Schema type: %s", t)
+}
+
 // oapiSchemaToGoType converts an OpenApi schema into a Go type definition for
 // all non-object types.
 func oapiSchemaToGoType(schema *openapi3.Schema, path []string, outSchema *Schema) error {
 	f := schema.Format
 	t := schema.Type
 
-	switch t {
+	goType, err := resolveGoType(f, t)
+	if err != nil {
+		return err
+	}
+	switch goType {
 	case "array":
 		// For arrays, we'll get the type of the Items and throw a
 		// [] in front of it.
@@ -705,8 +784,12 @@ func oapiSchemaToGoType(schema *openapi3.Schema, path []string, outSchema *Schem
 			outSchema.GoType = "string"
 		}
 		outSchema.DefineViaAlias = true
+	case "json.RawMessage":
+		outSchema.SkipOptionalPointer = true
+		outSchema.GoType = goType
 	default:
-		return fmt.Errorf("unhandled Schema type: %s", t)
+		outSchema.GoType = goType
+
 	}
 	return nil
 }
