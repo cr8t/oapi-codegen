@@ -112,7 +112,7 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
 
 type DecodeRequestFunc httptransport.DecodeRequestFunc
 
-{{range . -}}{{$opid := .OperationId}}
+{{range . -}}{{$opid := .OperationId}}{{$op := . }}
 // Make{{$opid}}Handler makes an http.Handler for the service method {{$opid}}.
 //
 // This is called automatically by GetRouter, but these are exported
@@ -142,6 +142,8 @@ if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 apiErr := APIError{Code: http.StatusBadRequest, Message: "decoding request body"}
 return nil, apiErr.Wrap(err)
 }
+{{ template "kit-parameter-check" .  }}
+
 return body, nil
 {{ else }}
 return nil, Error(http.StatusNotImplemented, "{{.ContentType}} bodies are not implemented by the generator")
@@ -152,6 +154,7 @@ return nil, Error(http.StatusNotImplemented, "{{.ContentType}} bodies are not im
 default:
 return nil, Errorf(http.StatusBadRequest, "'content-type: %s' not supported", contentType)
 }
+
 
 
 {{ else if and .PathParams (not .QueryParams)}}

@@ -27,7 +27,7 @@ var {{$Enum.TypeName}}List = []{{$Enum.TypeName}}{
 
 // IsValid{{$Enum.TypeName}} checks if the supplied {{$Enum.TypeName}} is a
 // valid enum value
-func IsValid{{$Enum.TypeName}}[T {{$Enum.TypeName}} | {{$Enum.Schema.GoType}}] (thing T) bool {
+func IsValid{{$Enum.TypeName}}[T ~{{$Enum.Schema.GoType}}] (thing T) bool {
 for _, c := range {{$Enum.TypeName}}List {
 if {{$Enum.Schema.GoType}}(thing) == {{$Enum.Schema.GoType}}(c) {
 return true

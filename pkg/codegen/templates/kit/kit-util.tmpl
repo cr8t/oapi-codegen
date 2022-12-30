@@ -1,3 +1,34 @@
+{{define "kit-parameter-check" -}}
+{{ range .Schema.Properties }}
+{{ if .Required }}
+  {{if eq .Schema.GoType "string" }}
+// checking required property '{{.JsonFieldName}}'
+  if body.{{.GoFieldName}} == "" {
+  	 return nil, Error(http.StatusBadRequest, "missing required value for '{{.JsonFieldName}}'")
+  }
+  {{ else if .Schema.ArrayType }}
+// checking required property '{{.JsonFieldName}}'
+  if len(body.{{.GoFieldName}}) == 0 {
+  	 return nil, Error(http.StatusBadRequest, "missing required value for '{{.JsonFieldName}}'")
+  }
+  {{ else if gt (len .Schema.EnumValues) 0 }}
+// checking enum property '{{.JsonFieldName}}'
+  if !IsValid{{.Schema.GoType}}(body.{{.GoFieldName}}) {
+  	 return nil, Error(http.StatusBadRequest, "missing or invalid value for '{{.JsonFieldName}}'")
+  }
+  {{ end }}
+{{ else }}
+  {{  if gt (len .Schema.EnumValues) 0 }}
+// checking enum property '{{.JsonFieldName}}'
+  if body.{{.GoFieldName}} != nil && !IsValid{{.Schema.GoType}}(*body.{{.GoFieldName}}) {
+  	 return nil, Error(http.StatusBadRequest, "invalid value for '{{.JsonFieldName}}'")
+  }
+  {{ end }}
+{{ end }}
+  
+{{ end }}
+{{- end }}
+
 {{define "kit-function-signature-external-params" -}}
 {{range $index, $param := .PathParams -}}
 , {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{- if not (or

@@ -11,8 +11,9 @@ import (
 // Schema describes an OpenAPI schema, with lots of helper fields to use in the
 // templating engine.
 type Schema struct {
-	GoType  string // The Go type needed to represent the schema
-	RefType string // If the type has a type name, this is set
+	GoType  string  // The Go type needed to represent the schema
+	RefType string  // If the type has a type name, this is set
+	Ref     *Schema // the schema of the referenced type
 
 	ArrayType *Schema // The schema of array element
 
@@ -218,6 +219,104 @@ func PropertiesEqual(a, b Property) bool {
 	return a.JsonFieldName == b.JsonFieldName && a.Schema.TypeDecl() == b.Schema.TypeDecl() && a.Required == b.Required
 }
 
+func generateProperties(schema *openapi3.Schema, path []string, outSchema Schema) (Schema, error) {
+
+	// We've got an object with some properties.
+	for _, pName := range SortedSchemaKeys(schema.Properties) {
+		p := schema.Properties[pName]
+		propertyPath := append(path, pName)
+		pSchema, err := GenerateGoSchema(p, propertyPath)
+		if err != nil {
+			return Schema{}, fmt.Errorf("error generating Go schema for property '%s': %w", pName, err)
+		}
+		// log.Printf("generated go schema for property '%s': %#v", pName, pSchema)
+
+		required := StringInArray(pName, schema.Required)
+
+		if pSchema.HasAdditionalProperties && pSchema.RefType == "" {
+			// If we have fields present which have additional properties,
+			// but are not a pre-defined type, we need to define a type
+			// for them, which will be based on the field names we followed
+			// to get to the type.
+			typeName := PathToTypeName(propertyPath)
+
+			typeDef := TypeDefinition{
+				TypeName: typeName,
+				JsonName: strings.Join(propertyPath, "."),
+				Schema:   pSchema,
+			}
+			pSchema.AdditionalTypes = append(pSchema.AdditionalTypes, typeDef)
+
+			pSchema.RefType = typeName
+		}
+		description := ""
+		if p.Value != nil {
+			description = p.Value.Description
+		}
+		prop := Property{
+			JsonFieldName:  pName,
+			Schema:         pSchema,
+			Required:       required,
+			Description:    description,
+			Nullable:       p.Value.Nullable,
+			ReadOnly:       p.Value.ReadOnly,
+			WriteOnly:      p.Value.WriteOnly,
+			ExtensionProps: &p.Value.ExtensionProps,
+		}
+		outSchema.Properties = append(outSchema.Properties, prop)
+	}
+
+	outSchema.HasAdditionalProperties = SchemaHasAdditionalProperties(schema)
+	outSchema.AdditionalPropertiesType = &Schema{
+		GoType: "interface{}",
+	}
+	if schema.AdditionalProperties != nil {
+		additionalSchema, err := GenerateGoSchema(schema.AdditionalProperties, path)
+		if err != nil {
+			return Schema{}, fmt.Errorf("error generating type for additional properties: %w", err)
+		}
+		outSchema.AdditionalPropertiesType = &additionalSchema
+	}
+
+	return outSchema, nil
+}
+
+func generateEnumValues(schema *openapi3.Schema, path []string, outSchema Schema) (Schema, error) {
+	if len(schema.Enum) == 0 {
+		return outSchema, nil
+	}
+	enumValues := make([]string, len(schema.Enum))
+	for i, enumValue := range schema.Enum {
+		enumValues[i] = fmt.Sprintf("%v", enumValue)
+	}
+
+	sanitizedValues := SanitizeEnumNames(enumValues)
+	outSchema.EnumValues = make(map[string]string, len(sanitizedValues))
+	var constNamePath []string
+	for k, v := range sanitizedValues {
+		if v == "" {
+			constNamePath = append(path, "Empty")
+		} else {
+			constNamePath = append(path, k)
+		}
+		outSchema.EnumValues[SchemaNameToEnumValueName(PathToTypeName(constNamePath))] = v
+	}
+	if len(path) > 1 { // handle additional type only on non-toplevel types
+		typeName := SchemaNameToTypeName(PathToTypeName(path))
+		typeDef := TypeDefinition{
+			TypeName: typeName,
+			JsonName: strings.Join(path, "."),
+			Schema:   outSchema,
+		}
+		outSchema.AdditionalTypes = append(outSchema.AdditionalTypes, typeDef)
+		outSchema.RefType = typeName
+	}
+	//outSchema.RefType = typeName
+
+	return outSchema, nil
+
+}
+
 func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 	// Add a fallback value in case the sref is nil.
 	// i.e. the parent schema defines a type:array, but the array has
@@ -237,11 +336,41 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 			return Schema{}, fmt.Errorf("error turning reference (%s) into a Go type: %s",
 				sref.Ref, err)
 		}
-		return Schema{
+
+		schemas := []*openapi3.Schema{schema}
+
+		if schema.AllOf != nil {
+			for _, sRef := range schema.AllOf {
+				schemas = append(schemas, sRef.Value)
+			}
+		}
+
+		outSchema := Schema{
 			GoType:         refType,
-			Description:    schema.Description,
+			Description:    StringToGoComment(schema.Description),
 			DefineViaAlias: true,
-		}, nil
+		}
+
+		for _, scm := range schemas {
+			new, err := generateProperties(scm, path, outSchema)
+			if err != nil {
+				return Schema{}, err
+			}
+			new, err = generateEnumValues(scm, path, new)
+			if err != nil {
+				return Schema{}, err
+			}
+
+			outSchema.Properties = append(outSchema.Properties, new.Properties...)
+			for k, v := range new.EnumValues {
+				if outSchema.EnumValues == nil {
+					outSchema.EnumValues = map[string]string{}
+				}
+				outSchema.EnumValues[k] = v
+			}
+		}
+
+		return outSchema, nil
 	}
 
 	outSchema := Schema{
@@ -417,10 +546,6 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 
 		if err != nil {
 			return Schema{}, fmt.Errorf("error resolving primitive type: %w", err)
-		}
-		enumValues := make([]string, len(schema.Enum))
-		for i, enumValue := range schema.Enum {
-			enumValues[i] = fmt.Sprintf("%v", enumValue)
 		}
 
 		enumNames := enumValues
