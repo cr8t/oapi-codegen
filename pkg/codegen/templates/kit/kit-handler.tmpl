@@ -1,18 +1,20 @@
 type RouterOptions struct {
 Prefix string
-NotFoundHandler http.Handler
+NotFoundHandler http.HandlerFunc
+MethodNotAllowedHandler http.HandlerFunc
 }
 
-// GetRouter returns a github.com/gorilla/mux router with the routes
+// GetRouter returns a github.com/go-chi/chi router with the routes
 // in the spec already set up
-func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) *mux.Router {
-	 r := mux.NewRouter()
+func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Router {
+	 r := chi.NewRouter()
 	 if logger != nil {
 	 	logger = kitlog.With(logger, "layer", "httptransport")
 	 	 r.Use(makeHTTPLoggingMiddleware(logger))
 	 }
 	prefix := ""
-	var notFoundHandler http.Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    
+	notFoundHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	 begin := time.Now()
 	   encodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
 	duration := time.Since(begin)
@@ -27,6 +29,23 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) *mux.Rout
 		)
 	 }
 	 })
+     
+	methodNotAllowedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	 begin := time.Now()
+	   encodeErrorResponse(r.Context(), Errorf(http.StatusMethodNotAllowed, "%s not allowed", r.Method), w)
+	duration := time.Since(begin)
+	ms := toFixed(float64(time.Since(begin))/float64(time.Millisecond), 2)
+	 if logger != nil {
+		logger.Log(
+			"method", r.Method,
+			"path", r.URL.Path,
+			"status", http.StatusMethodNotAllowed,
+			"duration", duration,
+			"ms", ms,
+		)
+	 }
+	 })
+     
 	if opts != nil {
 		if opts.Prefix != "" {
 			prefix = opts.Prefix
@@ -41,13 +60,17 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) *mux.Rout
 		if opts.NotFoundHandler != nil {
 		   notFoundHandler = opts.NotFoundHandler
 		}
+		if opts.MethodNotAllowedHandler != nil {
+		   methodNotAllowedHandler = opts.MethodNotAllowedHandler
+		}
 	}
 	
 {{range . -}}{{$opid := .OperationId}}
-	 r.Handle(fmt.Sprintf("%s{{.Path}}", prefix), Make{{$opid}}Handler(svc)).Methods("{{.Method}}")
+	 r.Method("{{.Method}}", fmt.Sprintf("%s{{.Path}}", prefix), Make{{$opid}}Handler(svc))
 {{end}}
 	
-	 r.NotFoundHandler = notFoundHandler
+	 r.NotFound(notFoundHandler)
+	 r.MethodNotAllowed(methodNotAllowedHandler)
 	 return r
 }
 
@@ -93,7 +116,7 @@ type DecodeRequestFunc httptransport.DecodeRequestFunc
 // Make{{$opid}}Handler makes an http.Handler for the service method {{$opid}}.
 //
 // This is called automatically by GetRouter, but these are exported
-// so that methods can be mounted manually with gorilla mux in the
+// so that methods can be mounted manually with chi in the
 // implementation
 func Make{{$opid}}Handler(svc Service) http.Handler {
 return httptransport.NewServer(
@@ -130,39 +153,29 @@ default:
 return nil, Errorf(http.StatusBadRequest, "'content-type: %s' not supported", contentType)
 }
 
-{{ else if .HasBody }}
-
-body, err := io.ReadAll(r.Body)
-if err != nil {
-apiErr := APIError{Code: http.StatusInternalServerError, Message: "reading request body"}
-return nil, apiErr.Wrap(err)
-}
-return string(body), nil
 
 {{ else if and .PathParams (not .QueryParams)}}
-vars := mux.Vars(r)
-
 {{range .PathParams -}}
-{{.ParamName}}Str, ok := vars["{{.ParamName}}"]
+{{.GoVariableName}}Str := chi.URLParam(r, "{{.ParamName}}")
 
   {{if .Required }}
-if !ok {
+if {{.GoVariableName}}Str == "" {
    return nil, Error(http.StatusBadRequest, "missing required parameter '{{.ParamName}}'")
 }
   {{end}}
 
-var {{.ParamName}} *{{.Schema.GoType}}
+var {{.GoVariableName}} *{{.Schema.GoType}}
   {{if eq .Schema.GoType "int" }}
   
     {{if not .Required}}
 if ok {
     {{end}}
 
-param, err := strconv.Atoi({{.ParamName}}Str)
+param, err := strconv.Atoi({{.GoVariableName}}Str)
 if err != nil {
   return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
 }
-{{.ParamName}} = &param
+{{.GoVariableName}} = &param
     {{if not .Required}}
 }
     {{end}}
@@ -172,11 +185,11 @@ if err != nil {
     {{if not .Required}}
 if ok {
     {{end}}
-param, err := strconv.ParseInt({{.ParamName}}Str, 10, 64)
+param, err := strconv.ParseInt({{.GoVariableName}}Str, 10, 64)
 if err != nil {
   return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
 }
-{{.ParamName}} = &param
+{{.GoVariableName}} = &param
     {{if not .Required}}
 }
     {{end}}
@@ -187,11 +200,11 @@ if err != nil {
     {{if not .Required}}
 if ok {
     {{end}}
-param, err := strconv.ParseFloat({{.ParamName}}Str, 64)
+param, err := strconv.ParseFloat({{.GoVariableName}}Str, 64)
 if err != nil {
   return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', double required")
 }
-{{.ParamName}} = &param
+{{.GoVariableName}} = &param
     {{if not .Required}}
 }
     {{end}}
@@ -202,7 +215,7 @@ if err != nil {
     {{if not .Required}}
 if ok {
     {{end}}
-{{.ParamName}} = &{{.ParamName}}Str
+{{.GoVariableName}} = &{{.GoVariableName}}Str
     {{if not .Required}}
 }
     {{end}}
@@ -212,8 +225,8 @@ if ok {
     {{if not .Required}}
 if ok {
     {{end}}
-	{{.ParamName}}{{.Schema.GoType}} := {{.Schema.GoType}}({{.ParamName}}Str)
-    {{.ParamName}} = &{{.ParamName}}{{.Schema.GoType}}
+	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Str)
+    {{.GoVariableName}} = &{{.GoVariableName}}Cast
     {{if not .Required}}
 }
     {{end}}
@@ -224,7 +237,7 @@ if ok {
 
 return {{$opid}}Request {
 {{range .PathParams -}}
-{{.GoName}}: {{if .Required}}*{{end}}{{.ParamName}},
+{{.GoName}}: {{if .Required}}*{{end}}{{.GoVariableName}},
 {{end}}
 }, nil
 
