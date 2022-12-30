@@ -271,27 +271,37 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 }
 
 func encodeErrorResponse(_ context.Context, err error, w http.ResponseWriter) {
-	 code := http.StatusInternalServerError
-	 if sc, ok := err.(httptransport.StatusCoder); ok {
-	 	code = sc.StatusCode()
-	 }
-	
-	 if _, ok := err.(json.Marshaler); !ok {
-		err = Error(code, err.Error())
-	 }
 
-	 if headerer, ok := err.(httptransport.Headerer); ok {
+	w.Header().Set("content-type", "application/json")
+	w.Header().Set("x-powered-by", headerXPoweredBy)
+
+	code := http.StatusInternalServerError
+	var sc httptransport.StatusCoder
+	if errors.As(err, &sc) {
+		code = sc.StatusCode()
+	}
+
+	var headerer httptransport.Headerer
+	if errors.As(err, &headerer) {
 		for k, values := range headerer.Headers() {
 			for _, v := range values {
 				w.Header().Add(k, v)
 			}
 		}
 	}
-	 
-	 w.Header().Set("content-type", "application/json")
-	 w.Header().Set("x-powered-by", headerXPoweredBy)
-	 w.WriteHeader(code)
-	 json.NewEncoder(w).Encode(err)
+
+	w.WriteHeader(code)
+
+	var apiErr APIError
+	if errors.As(err, &apiErr) {
+		json.NewEncoder(w).Encode(apiErr)
+		return
+	} else if _, ok := err.(json.Marshaler); !ok {
+		err = Error(code, err.Error())
+	}
+
+
+	json.NewEncoder(w).Encode(err)
 }
 
 
