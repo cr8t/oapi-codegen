@@ -15,35 +15,11 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Route
 	prefix := ""
     
 	notFoundHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	 begin := time.Now()
 	   encodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
-	duration := time.Since(begin)
-	ms := toFixed(float64(time.Since(begin))/float64(time.Millisecond), 2)
-	 if logger != nil {
-		logger.Log(
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", http.StatusNotFound,
-			"duration", duration,
-			"ms", ms,
-		)
-	 }
 	 })
      
 	methodNotAllowedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	 begin := time.Now()
 	   encodeErrorResponse(r.Context(), Errorf(http.StatusMethodNotAllowed, "%s not allowed", r.Method), w)
-	duration := time.Since(begin)
-	ms := toFixed(float64(time.Since(begin))/float64(time.Millisecond), 2)
-	 if logger != nil {
-		logger.Log(
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", http.StatusMethodNotAllowed,
-			"duration", duration,
-			"ms", ms,
-		)
-	 }
 	 })
      
 	if opts != nil {
