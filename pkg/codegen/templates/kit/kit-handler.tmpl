@@ -66,7 +66,13 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Route
 	}
 	
 {{range . -}}{{$opid := .OperationId}}
-	 r.Method("{{.Method}}", fmt.Sprintf("%s{{.Path}}", prefix), Make{{$opid}}Handler(svc))
+     {{if and
+	 (eq (len .PathParams) 1)
+	 (eq (index .PathParams 0).Spec.Schema.Value.Format "path")}}
+	 r.Method("{{.Method}}", fmt.Sprintf("%s{{.Path | swaggerUriToChiPathUri}}", prefix), Make{{$opid}}Handler(svc))
+	 {{ else }}
+	 r.Method("{{.Method}}", fmt.Sprintf("%s{{.Path | swaggerUriToChiUri}}", prefix), Make{{$opid}}Handler(svc))
+	 {{ end }}
 {{end}}
 	
 	 r.NotFound(notFoundHandler)
@@ -159,7 +165,11 @@ return nil, Errorf(http.StatusBadRequest, "'content-type: %s' not supported", co
 
 {{ else if and .PathParams (not .QueryParams)}}
 {{range .PathParams -}}
+     {{if (eq .Spec.Schema.Value.Format "path")}}
+{{.GoVariableName}}Str := chi.URLParam(r, "*")
+	 {{ else }}
 {{.GoVariableName}}Str := chi.URLParam(r, "{{.ParamName}}")
+	 {{ end }}
 
   {{if .Required }}
 if {{.GoVariableName}}Str == "" {
