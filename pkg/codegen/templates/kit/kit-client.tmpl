@@ -7,6 +7,7 @@ type Client interface {
 func New(baseURL string) Client {
 	return &client{
 		baseURL: baseURL,
+		logger:  api.NewLogger(kitlog.NewNopLogger(), ""),
 	}
 }
 
