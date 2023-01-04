@@ -119,6 +119,9 @@ func (pd ParameterDefinition) GoVariableName() string {
 	if name == "iD" {
 		name = "id"
 	}
+	if name == "uRI" {
+		name = "uri"
+	}
 	if IsGoKeyword(name) {
 		name = "p" + UppercaseFirstCharacter(name)
 	}
