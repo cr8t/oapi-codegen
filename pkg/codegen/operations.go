@@ -1166,6 +1166,15 @@ func GenerateKitMiddlewareChaos(t *template.Template, operations []OperationDefi
 	}, t, operations)
 }
 
+// GenerateKitMiddlewareJWT This function generates all the go code for the ServerInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitMiddlewareJWT(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-middleware-jwt.tmpl",
+	}, t, operations)
+}
+
 // GenerateKitServiceStub This function generates all the go code for the ServerInterface as well as
 // all the wrapper functions around our handlers.
 func GenerateKitServiceStub(t *template.Template, operations []OperationDefinition) (string, error) {

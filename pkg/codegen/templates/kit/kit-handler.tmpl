@@ -2,6 +2,7 @@ type RouterOptions struct {
 Prefix string
 NotFoundHandler http.HandlerFunc
 MethodNotAllowedHandler http.HandlerFunc
+JWTKey []byte
 }
 
 // GetRouter returns a github.com/go-chi/chi router with the routes
@@ -25,12 +26,12 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Route
 	if opts != nil {
 		if opts.Prefix != "" {
 			prefix = opts.Prefix
-		}
 		if prefix[0] != '/' {
 			prefix = "/" + prefix
 		}
 		if prefix[len(prefix)-1] == '/' {
 			prefix = prefix[0:len(prefix)-1]
+		}
 		}
 
 		if opts.NotFoundHandler != nil {
@@ -39,6 +40,10 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Route
 		if opts.MethodNotAllowedHandler != nil {
 		   methodNotAllowedHandler = opts.MethodNotAllowedHandler
 		}
+
+        if opts.JWTKey != nil {
+           r.Use(MakeJWTMiddleware(opts.JWTKey))
+        }
 	}
 	
 {{range . -}}{{$opid := .OperationId}}
