@@ -249,10 +249,10 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
 	}
 
-	kitMiddlewareJWTOut, err := GenerateKitMiddlewareJWT(t, ops)
-	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
-	}
+	// kitMiddlewareJWTOut, err := GenerateKitMiddlewareJWT(t, ops)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+	// }
 
 	kitServiceStubOut, err := GenerateKitServiceStub(t, ops)
 	if err != nil {
