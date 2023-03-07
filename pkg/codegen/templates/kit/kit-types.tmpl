@@ -4,7 +4,8 @@
 type APIError struct {
      Code string `json:"code,omitempty"`
      Status int `json:"status,omitempty"`
-     Message string `json:"message,omitempty"`
+     Message string `json:"error,omitempty"`
+     Details string `json:"details,omitempty"` // generated from err, here for unmarshaling
      err error
 }
 
@@ -39,6 +40,8 @@ func (err APIError) Error() string {
      }
      if err.err != nil {
         return fmt.Sprintf("%s%s: %s", codeStr, err.Message, err.err)
+     } else if err.Details != "" {
+        return fmt.Sprintf("%s%s: %s", codeStr, err.Message, err.Details)
      }
      return fmt.Sprintf("%s%s", codeStr, err.Message)
 }
