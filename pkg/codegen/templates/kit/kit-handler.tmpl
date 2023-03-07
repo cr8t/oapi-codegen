@@ -98,9 +98,9 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
 				if lwr.statusCode != http.StatusOK && lwr.body != nil {
 					var apiErr APIError
 					if err := json.Unmarshal(lwr.body, &apiErr); err != nil {
-						kvs = append(kvs, "error", apiErr.Error())
-					} else {
 						kvs = append(kvs, "error", string(lwr.body))	
+					} else {
+						kvs = append(kvs, "error", apiErr.Error())
 					}
 				}
 				logger.Log(kvs...)
