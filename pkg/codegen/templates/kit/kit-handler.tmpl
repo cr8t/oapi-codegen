@@ -61,19 +61,28 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Route
 	 return r
 }
 
-	type loggingResponseWriter struct {
-        http.ResponseWriter
-        statusCode int
-    }
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	body []byte
+}
 
-    func newLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
-        return &loggingResponseWriter{w, http.StatusOK}
-    }
+func newLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
+	return &loggingResponseWriter{
+		ResponseWriter: w,
+		statusCode: http.StatusOK,
+	}
+}
 
     func (lrw *loggingResponseWriter) WriteHeader(code int) {
         lrw.statusCode = code
         lrw.ResponseWriter.WriteHeader(code)
     }
+
+func (lrw *loggingResponseWriter) Write(data []byte) (int, error) {
+	lrw.body = data
+	return lrw.ResponseWriter.Write(data)
+}
 
 func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Handler {
   return func(next http.Handler) http.Handler {
@@ -83,13 +92,22 @@ func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Han
 	duration := time.Since(begin)
 	ms := toFixed(float64(time.Since(begin))/float64(time.Millisecond), 2)
 	if r.URL.Path == "/healthz" && lwr.statusCode == http.StatusOK { return; }
-		logger.Log(
-			"method", r.Method,
-			"path", r.URL.Path,
-			"status", lwr.statusCode,
-			"duration", duration,
-			"ms", ms,
-		)
+				kvs := []interface{}{
+					"method", r.Method,
+					"path", r.URL.Path,
+					"status", lwr.statusCode,
+					"duration", duration,
+					"ms", ms,
+				}
+				if lwr.statusCode != http.StatusOK && lwr.body != nil {
+					var apiErr APIError
+					if err := json.Unmarshal(lwr.body, &apiErr); err != nil {
+						kvs = append(kvs, "error", apiErr.Error())
+					} else {
+						kvs = append(kvs, "error", string(lwr.body))	
+					}
+				}
+				logger.Log(kvs...)
 	}(time.Now())
           next.ServeHTTP(lwr, r)
       })
