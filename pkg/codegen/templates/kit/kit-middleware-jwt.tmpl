@@ -23,8 +23,20 @@ type JWTParser struct {
 	key []byte
 }
 
-func (parser JWTParser) Keyfunc(*jwt.Token) (interface{}, error) {
-	return parser.key, nil
+func (parser JWTParser) Keyfunc(token *jwt.Token) (interface{}, error) {
+
+	switch token.Method {
+	case jwt.SigningMethodHS256, jwt.SigningMethodHS384, jwt.SigningMethodHS512:
+		return parser.key, nil
+	case jwt.SigningMethodRS256:
+		return rsa.GenerateKey(bytes.NewBuffer(parser.key), 256)
+	case jwt.SigningMethodRS384:
+		return rsa.GenerateKey(bytes.NewBuffer(parser.key), 384)
+	case jwt.SigningMethodRS512:
+		return rsa.GenerateKey(bytes.NewBuffer(parser.key), 512)
+	}
+
+	return nil, fmt.Errorf("cannot handle %s signed keys", token.Method)
 }
 
 type JWTMiddleware struct {
