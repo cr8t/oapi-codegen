@@ -441,10 +441,10 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 		return nil, fmt.Errorf("error writing server path handlers: %w", err)
 	}
 
-	_, err = writers[fileTransportMiddlewareJWT].WriteString(kitMiddlewareJWTOut)
-	if err != nil {
-		return nil, fmt.Errorf("error writing server path handlers: %w", err)
-	}
+	// _, err = writers[fileTransportMiddlewareJWT].WriteString(kitMiddlewareJWTOut)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("error writing server path handlers: %w", err)
+	// }
 
 	for file, w := range writers {
 		if err := formatAndWrite(file, w, bufs[file]); err != nil {
