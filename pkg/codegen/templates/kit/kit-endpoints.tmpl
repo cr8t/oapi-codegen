@@ -1,5 +1,5 @@
 {{range . -}}{{$opid := .OperationId}}
-func make{{$opid}}Endpoint(svc Service) endpoint.Endpoint {
+func Make{{$opid}}Endpoint(svc Service) endpoint.Endpoint {
 return func(ctx context.Context, request interface{}) (interface{}, error) {
 
 {{if .AllParams}}

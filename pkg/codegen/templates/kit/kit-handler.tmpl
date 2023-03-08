@@ -15,11 +15,11 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Route
 	prefix := ""
     
 	notFoundHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	   encodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
+	   EncodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
 	 })
      
 	methodNotAllowedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	   encodeErrorResponse(r.Context(), Errorf(http.StatusMethodNotAllowed, "%s not allowed", r.Method), w)
+	   EncodeErrorResponse(r.Context(), Errorf(http.StatusMethodNotAllowed, "%s not allowed", r.Method), w)
 	 })
      
 	if opts != nil {
@@ -121,10 +121,10 @@ type DecodeRequestFunc httptransport.DecodeRequestFunc
 // implementation
 func Make{{$opid}}Handler(svc Service) http.Handler {
 return httptransport.NewServer(
-		make{{$opid}}Endpoint(svc),
+		Make{{$opid}}Endpoint(svc),
 		httptransport.DecodeRequestFunc(decode{{$opid}}Request),
-		encodeResponse,
-		httptransport.ServerErrorEncoder(encodeErrorResponse),
+		EncodeResponse,
+		httptransport.ServerErrorEncoder(EncodeErrorResponse),
 	)
 }
 
@@ -158,105 +158,24 @@ return nil, Errorf(http.StatusBadRequest, "'content-type: %s' not supported", co
 
 
 
-{{ else if and .PathParams (not .QueryParams)}}
+{{ else if or .PathParams .QueryParams }}
     {{range .PathParams -}}
-        {{if (eq .Spec.Schema.Value.Format "path")}}
-        {{.GoVariableName}}Str := chi.URLParam(r, "*")
-	    {{ else }}
-        {{.GoVariableName}}Str := chi.URLParam(r, "{{.ParamName}}")
-	    {{ end }}
+	{{ template "kit-path-parameter-decode" .  }}
+	{{end}}
 
-        {{if .Required }}
-        if {{.GoVariableName}}Str == "" {
-		   return nil, Error(http.StatusBadRequest, "missing required parameter '{{.ParamName}}'")
-		}
-        {{end}}
-
-		var {{.GoVariableName}} *{{.Schema.GoType}}
-		{{if eq .Schema.GoType "int" }}
-  
-            {{if not .Required}}
-			if ok {
-    		{{end}}
-
-			param, err := strconv.Atoi({{.GoVariableName}}Str)
-			if err != nil {
-			  return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
-			}
-			{{.GoVariableName}} = &param
-		    {{if not .Required}}
-			}
-			{{end}}
-
-          {{else if eq .Schema.GoType "int64"}}
-          
-            {{if not .Required}}
-        if ok {
-            {{end}}
-        param, err := strconv.ParseInt({{.GoVariableName}}Str, 10, 64)
-        if err != nil {
-          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
-        }
-        {{.GoVariableName}} = &param
-            {{if not .Required}}
-        }
-            {{end}}
-        
-        
-          {{else if eq .Schema.GoType "float64"}}
-          
-            {{if not .Required}}
-        if ok {
-            {{end}}
-        param, err := strconv.ParseFloat({{.GoVariableName}}Str, 64)
-        if err != nil {
-          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', double required")
-        }
-        {{.GoVariableName}} = &param
-            {{if not .Required}}
-        }
-            {{end}}
-        
-        
-          {{else if eq .Schema.GoType "string"}}
-          
-            {{if not .Required}}
-        if ok {
-            {{end}}
-        {{.GoVariableName}} = &{{.GoVariableName}}Str
-            {{if not .Required}}
-        }
-            {{end}}
-        
-          {{ else }}
-          
-            {{if not .Required}}
-        if ok {
-            {{end}}
-        	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Str)
-            {{.GoVariableName}} = &{{.GoVariableName}}Cast
-            {{if not .Required}}
-        }
-         {{end}}
-  {{  if gt (len .Schema.EnumValues) 0 }}
-// checking enum property '{{.ParamName}}'
-  if {{.GoVariableName}} != nil && !IsValid{{.Schema.GoType}}(*{{.GoVariableName}}) {
-  	 return nil, Error(http.StatusBadRequest, "invalid value for '{{.ParamName}}'")
-  }
-  {{ end }}
+    {{range .QueryParams -}}
+	{{ template "kit-query-parameter-decode" .  }}
+	{{end}}
 	
-  {{end}}
-  
-{{end}}
-
 return {{$opid}}Request {
 {{range .PathParams -}}
 {{.GoName}}: {{if .Required}}*{{end}}{{.GoVariableName}},
-{{end}}
+{{end -}}
+{{range .QueryParams -}}
+{{.GoName}}: {{if .Required}}*{{end}}{{.GoVariableName}},
+{{end -}}
 }, nil
 
-{{ else if .QueryParams }}
-  return nil, Error(http.StatusNotImplemented, "Decode{{$opid}}Request must be implemented by developer and set by using SetDecode{{$opid}}Request")
 {{ else }}
   return nil, nil
 {{ end }}
@@ -272,7 +191,7 @@ decode{{$opid}}Request = fn
 
 const headerXPoweredBy = "four elephants atop a giant turtle"
 
-func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+func EncodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	w.Header().Set("x-powered-by", headerXPoweredBy)
 	if response == nil {
 	  return nil
@@ -281,7 +200,7 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 	return json.NewEncoder(w).Encode(response)
 }
 
-func encodeErrorResponse(_ context.Context, err error, w http.ResponseWriter) {
+func EncodeErrorResponse(_ context.Context, err error, w http.ResponseWriter) {
 
 	w.Header().Set("content-type", "application/json")
 	w.Header().Set("x-powered-by", headerXPoweredBy)
