@@ -58,7 +58,6 @@
   if {{.GoVariableName}} != nil && !IsValid{{.Schema.GoType}}(*{{.GoVariableName}}) {
   	 return nil, Error(http.StatusBadRequest, "invalid value for '{{.ParamName}}'")
   }
-  {{ end }}
   {{ else }}
   if {{.GoVariableName}} == nil || !IsValid{{.Schema.GoType}}(*{{.GoVariableName}}) {
   	 {{.GoVariableName}} = nil
@@ -67,6 +66,7 @@
 	
   {{end}}
   
+{{end}}
 {{end}}
 
 {{define "kit-path-parameter-decode" -}}
