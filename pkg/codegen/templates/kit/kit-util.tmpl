@@ -1,7 +1,23 @@
+{{define "kit-path-parameter-decode" -}}
+        {{if (eq .Spec.Schema.Value.Format "path")}}
+        {{.GoVariableName}}Str := chi.URLParam(r, "*")
+	    {{ else }}
+        {{.GoVariableName}}Str := chi.URLParam(r, "{{.ParamName}}")
+	    {{ end }}
+
+{{ template "kit-parameter-decode" . }}
+
+{{end}}
+
 {{define "kit-query-parameter-decode" -}}
 
         {{.GoVariableName}}Str := QueryGetValue(r.URL.Query(), "{{.ParamName}}", "")
 		
+{{ template "kit-parameter-decode" . }}
+
+{{end}}
+
+{{define "kit-parameter-decode" -}}
         {{if .Required }}
         if {{.GoVariableName}}Str == "" {
 		   return nil, Error(http.StatusBadRequest, "missing required parameter '{{.ParamName}}'")
@@ -47,12 +63,9 @@
           
         {{.GoVariableName}} = &{{.GoVariableName}}Str
         
-          {{ else }}
-          
-        	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Str)
+  {{ else if gt (len .Schema.EnumValues) 0 }}
+        	{{.GoVariableName}}Cast := {{.Schema.GoType}}(EnumNormalize({{.GoVariableName}}Str))
             {{.GoVariableName}} = &{{.GoVariableName}}Cast
-			
-  {{  if gt (len .Schema.EnumValues) 0 }}
 // checking enum property '{{.ParamName}}'
   {{ if .Required }}
   if {{.GoVariableName}} != nil && !IsValid{{.Schema.GoType}}(*{{.GoVariableName}}) {
@@ -63,104 +76,15 @@
   	 {{.GoVariableName}} = nil
   }
   {{ end }}
-	
-  {{end}}
-  
-{{end}}
-{{end}}
 
-{{define "kit-path-parameter-decode" -}}
-        {{if (eq .Spec.Schema.Value.Format "path")}}
-        {{.GoVariableName}}Str := chi.URLParam(r, "*")
-	    {{ else }}
-        {{.GoVariableName}}Str := chi.URLParam(r, "{{.ParamName}}")
-	    {{ end }}
-
-        {{if .Required }}
-        if {{.GoVariableName}}Str == "" {
-		   return nil, Error(http.StatusBadRequest, "missing required parameter '{{.ParamName}}'")
-		}
-        {{end}}
-
-		var {{.GoVariableName}} *{{.Schema.GoType}}
-		{{if eq .Schema.GoType "int" }}
-  
-            {{if not .Required}}
-			if ok {
-    		{{end}}
-
-			{{.GoVariableName}}Param, err := strconv.Atoi({{.GoVariableName}}Str)
-			if err != nil {
-			  return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
-			}
-			{{.GoVariableName}} = &{{.GoVariableName}}Param
-			
-		    {{if not .Required}}
-			}
-			{{end}}
-
-          {{else if eq .Schema.GoType "int64"}}
-          
-            {{if not .Required}}
-        if ok {
-            {{end}}
-        {{.GoVariableName}}Param, err := strconv.ParseInt({{.GoVariableName}}Str, 10, 64)
-        if err != nil {
-          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
-        }
-        {{.GoVariableName}} = &{{.GoVariableName}}Param
-		
-            {{if not .Required}}
-        }
-            {{end}}
-        
-        
-          {{else if eq .Schema.GoType "float64"}}
-          
-            {{if not .Required}}
-        if ok {
-            {{end}}
-        {{.GoVariableName}}Param, err := strconv.ParseFloat({{.GoVariableName}}Str, 64)
-        if err != nil {
-          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', double required")
-        }
-        {{.GoVariableName}} = &{{.GoVariableName}}Param
-		
-            {{if not .Required}}
-        }
-            {{end}}
-        
-        
-          {{else if eq .Schema.GoType "string"}}
-          
-            {{if not .Required}}
-        if ok {
-            {{end}}
-        {{.GoVariableName}} = &{{.GoVariableName}}Str
-            {{if not .Required}}
-        }
-            {{end}}
-        
-          {{ else }}
-          
-            {{if not .Required}}
-        if ok {
-            {{end}}
+{{ else }}
         	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Str)
             {{.GoVariableName}} = &{{.GoVariableName}}Cast
-            {{if not .Required}}
-        }
-         {{end}}
-  {{  if gt (len .Schema.EnumValues) 0 }}
-// checking enum property '{{.ParamName}}'
-  if {{.GoVariableName}} != nil && !IsValid{{.Schema.GoType}}(*{{.GoVariableName}}) {
-  	 return nil, Error(http.StatusBadRequest, "invalid value for '{{.ParamName}}'")
-  }
-  {{ end }}
 	
   {{end}}
   
 {{end}}
+
 
 {{define "kit-parameter-check" -}}
 {{ range .Schema.Properties }}
