@@ -5,15 +5,17 @@
         {{.GoVariableName}}Str := chi.URLParam(r, "{{.ParamName}}")
 	    {{ end }}
 
-{{ template "kit-parameter-decode" . }}
+		{{ template "kit-parameter-decode" . }}
 
 {{end}}
 
 {{define "kit-query-parameter-decode" -}}
 
+		{{ if not (eq .Schema.OAPISchema.Type "boolean") }}
         {{.GoVariableName}}Str := QueryGetValue(r.URL.Query(), "{{.ParamName}}", "")
+		{{ end }}
 		
-{{ template "kit-parameter-decode" . }}
+		{{ template "kit-parameter-decode" . }}
 
 {{end}}
 
@@ -78,8 +80,31 @@
   {{ end }}
 
 {{ else }}
-        	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Str)
-            {{.GoVariableName}} = &{{.GoVariableName}}Cast
+
+// oapi type: {{.Schema.OAPISchema.Type}}
+// oapi format: {{.Schema.OAPISchema.Format}}
+
+   {{ if eq .Schema.OAPISchema.Type "string" }}
+      	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Str)
+   {{ else if eq .Schema.OAPISchema.Type "boolean" }}
+      	{{.GoVariableName}}Cast := {{.Schema.GoType}}(QueryGetValue(r.URL.Query(), "{{.ParamName}}", false))
+   {{ else if eq .Schema.OAPISchema.Type "integer" }}
+   	  {{ if eq .Schema.OAPISchema.Format "int64" }}
+        {{.GoVariableName}}Param, err := strconv.ParseInt({{.GoVariableName}}Str, 10, 64)
+        if err != nil {
+          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
+        }
+			{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Param)
+	  {{ else }}
+			{{.GoVariableName}}Param, err := strconv.Atoi({{.GoVariableName}}Str)
+			if err != nil {
+			  return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
+			}
+			{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Param)
+	  {{ end }}
+   {{ end }}
+
+        {{.GoVariableName}} = &{{.GoVariableName}}Cast
 	
   {{end}}
   
