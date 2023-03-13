@@ -18,6 +18,12 @@
 
 		{{ template "kit-array-parameter-decode" . }}
 		 
+		 {{ else if eq .Schema.OAPISchema.Type "array" }}
+
+		if true {
+		return nil, Error(http.StatusNotImplemented, "object query params are not implemented by the generator yet")
+		}
+		 
 		 {{ else }}
 		 
 		{{ if not (eq .Schema.OAPISchema.Type "boolean") }}
