@@ -11,11 +11,35 @@
 
 {{define "kit-query-parameter-decode" -}}
 
+// oapi type: {{.Schema.OAPISchema.Type}}
+// oapi format: {{.Schema.OAPISchema.Format}}
+
+		 {{ if eq .Schema.OAPISchema.Type "array" }}
+
+		{{ template "kit-array-parameter-decode" . }}
+		 
+		 {{ else }}
+		 
 		{{ if not (eq .Schema.OAPISchema.Type "boolean") }}
         {{.GoVariableName}}Str := QueryGetValue(r.URL.Query(), "{{.ParamName}}", "")
 		{{ end }}
 		
 		{{ template "kit-parameter-decode" . }}
+		
+		 {{ end }}
+
+{{end}}
+
+{{define "kit-array-parameter-decode" -}}
+// oapi array type: {{.Schema.OAPISchema.Items.Value.Type}}
+// oapi array format: {{.Schema.OAPISchema.Items.Value.Format}}
+
+		 
+values := r.URL.Query()["{{.ParamName}}"]
+
+{{if eq .Schema.OAPISchema.Items.Value.Type "string" }}
+	 {{.GoVariableName}} := &values
+{{ end }}
 
 {{end}}
 
@@ -81,11 +105,22 @@
 
 {{ else }}
 
-// oapi type: {{.Schema.OAPISchema.Type}}
-// oapi format: {{.Schema.OAPISchema.Format}}
-
    {{ if eq .Schema.OAPISchema.Type "string" }}
+   	  {{ if eq .Schema.OAPISchema.Format "date-time" }}
+	  	 {{.GoVariableName}}Param, err := time.Parse({{.GoVariableName}}Str, time.RFC3339Nano)
+        if err != nil {
+          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', RFC3339 date string required")
+        }
+      	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Param)
+	  {{ else if eq .Schema.OAPISchema.Format "date" }}
+	  	 {{.GoVariableName}}Param, err := time.Parse({{.GoVariableName}}Str, "2006-01-02")
+        if err != nil {
+          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', RFC3339 date string required")
+        }
+      	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Param)
+	  {{ else }}
       	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Str)
+	  {{ end }}
    {{ else if eq .Schema.OAPISchema.Type "boolean" }}
       	{{.GoVariableName}}Cast := {{.Schema.GoType}}(QueryGetValue(r.URL.Query(), "{{.ParamName}}", false))
    {{ else if eq .Schema.OAPISchema.Type "integer" }}
