@@ -2,6 +2,7 @@ type RouterOptions struct {
 Prefix string
 NotFoundHandler http.HandlerFunc
 MethodNotAllowedHandler http.HandlerFunc
+Middleware []func(http.Handler) http.Handler
 }
 
 // GetRouter returns a github.com/go-chi/chi router with the routes
@@ -12,6 +13,7 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Route
 	 	logger = kitlog.With(logger, "layer", "httptransport")
 	 	 r.Use(makeHTTPLoggingMiddleware(logger))
 	 }
+
 	prefix := ""
     
 	notFoundHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -23,6 +25,11 @@ func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Route
 	 })
      
 	if opts != nil {
+
+	   for _, mw := range opts.Middleware {
+	   	   r.Use(mw)
+	   }
+	
 		if opts.Prefix != "" {
 			prefix = opts.Prefix
 		if prefix[0] != '/' {
