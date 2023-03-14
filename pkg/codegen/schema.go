@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"unicode"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
@@ -92,6 +93,23 @@ type Property struct {
 
 func (p Property) GoFieldName() string {
 	return SchemaNameToTypeName(p.JsonFieldName)
+}
+
+func (p Property) GoVariableName() string {
+	name := LowercaseFirstCharacter(p.GoFieldName())
+	if name == "iD" {
+		name = "id"
+	}
+	if name == "uRI" {
+		name = "uri"
+	}
+	if IsGoKeyword(name) {
+		name = "p" + UppercaseFirstCharacter(name)
+	}
+	if unicode.IsNumber([]rune(name)[0]) {
+		name = "n" + name
+	}
+	return name
 }
 
 func (p Property) GoTypeDef() string {

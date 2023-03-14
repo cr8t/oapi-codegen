@@ -20,9 +20,7 @@
 		 
 		 {{ else if eq .Schema.OAPISchema.Type "object" }}
 
-		if true {
-		return nil, Error(http.StatusNotImplemented, "object query params are not implemented by the generator yet")
-		}
+		{{ template "kit-object-parameter-decode" . }}
 		 
 		 {{ else }}
 		 
@@ -46,6 +44,18 @@ values := r.URL.Query()["{{.ParamName}}"]
 {{if eq .Schema.OAPISchema.Items.Value.Type "string" }}
 	 {{.GoVariableName}} := &values
 {{ end }}
+
+{{end}}
+
+{{define "kit-object-parameter-decode" -}}
+{{$paramName := .ParamName}}
+{{ range .Schema.Properties }}
+{{.GoVariableName}} := QueryGetSubValue[*{{.Schema.GoType}}](r.URL.Query(), "{{$paramName}}", "{{.JsonFieldName}}", nil)
+{{ end }}
+{{$paramName}} := &{{.Schema.GoType}}{ {{ range .Schema.Properties }}
+{{.GoFieldName}}: {{if .Required}}*{{end}}{{.GoVariableName}},
+{{- end }}
+}
 
 {{end}}
 
@@ -109,7 +119,7 @@ values := r.URL.Query()["{{.ParamName}}"]
   }
   {{ end }}
 
-{{ else }}
+{{ else if .Schema.OAPISchema }}
 
    {{ if eq .Schema.OAPISchema.Type "string" }}
    	  {{ if eq .Schema.OAPISchema.Format "date-time" }}
