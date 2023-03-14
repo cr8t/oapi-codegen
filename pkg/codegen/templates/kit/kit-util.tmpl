@@ -50,10 +50,10 @@ values := r.URL.Query()["{{.ParamName}}"]
 {{define "kit-object-parameter-decode" -}}
 {{$paramName := .ParamName}}
 {{ range .Schema.Properties }}
-{{.GoVariableName}} := QueryGetSubValue[*{{.Schema.GoType}}](r.URL.Query(), "{{$paramName}}", "{{.JsonFieldName}}", nil)
+{{.GoVariableName}}Value := QueryGetSubValue[*{{.Schema.GoType}}](r.URL.Query(), "{{$paramName}}", "{{.JsonFieldName}}", nil)
 {{ end }}
 {{$paramName}} := &{{.Schema.GoType}}{ {{ range .Schema.Properties }}
-{{.GoFieldName}}: {{if .Required}}*{{end}}{{.GoVariableName}},
+{{.GoFieldName}}: {{if .Required}}*{{end}}{{.GoVariableName}}Value,
 {{- end }}
 }
 
