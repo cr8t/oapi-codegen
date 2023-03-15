@@ -11,6 +11,11 @@
 
 {{define "kit-query-parameter-decode" -}}
 
+{{ if not .Schema.OAPISchema }}
+        {{.GoVariableName}}Str := QueryGetValue(r.URL.Query(), "{{.ParamName}}", "")
+		{{ template "kit-parameter-decode" . }}
+{{ else }}
+
 // oapi type: {{.Schema.OAPISchema.Type}}
 // oapi format: {{.Schema.OAPISchema.Format}}
 
@@ -31,6 +36,8 @@
 		{{ template "kit-parameter-decode" . }}
 		
 		 {{ end }}
+
+{{ end }}
 
 {{end}}
 
