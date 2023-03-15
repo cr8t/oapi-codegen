@@ -217,6 +217,9 @@ func EncodeErrorResponse(_ context.Context, err error, w http.ResponseWriter) {
 	if errors.As(err, &sc) {
 		code = sc.StatusCode()
 	}
+	if http.StatusText(code) == "" {
+	   code = http.StatusInternalServerError
+	}
 
 	var headerer httptransport.Headerer
 	if errors.As(err, &headerer) {
