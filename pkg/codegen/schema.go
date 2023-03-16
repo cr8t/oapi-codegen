@@ -238,6 +238,15 @@ func PropertiesEqual(a, b Property) bool {
 	return a.JsonFieldName == b.JsonFieldName && a.Schema.TypeDecl() == b.Schema.TypeDecl() && a.Required == b.Required
 }
 
+func addProperty(props []Property, prop Property) []Property {
+	for _, p := range props {
+		if p.JsonFieldName == prop.JsonFieldName {
+			return props
+		}
+	}
+	return append(props, prop)
+}
+
 func generateProperties(schema *openapi3.Schema, path []string, outSchema Schema) (Schema, error) {
 
 	// We've got an object with some properties.
@@ -282,7 +291,7 @@ func generateProperties(schema *openapi3.Schema, path []string, outSchema Schema
 			WriteOnly:      p.Value.WriteOnly,
 			ExtensionProps: &p.Value.ExtensionProps,
 		}
-		outSchema.Properties = append(outSchema.Properties, prop)
+		outSchema.Properties = addProperty(outSchema.Properties, prop)
 	}
 
 	outSchema.HasAdditionalProperties = SchemaHasAdditionalProperties(schema)
@@ -385,7 +394,10 @@ func GenerateGoSchema(sref *openapi3.SchemaRef, path []string) (Schema, error) {
 				return Schema{}, err
 			}
 
-			outSchema.Properties = append(outSchema.Properties, new.Properties...)
+			for _, prop := range new.Properties {
+				outSchema.Properties = addProperty(outSchema.Properties, prop)
+			}
+
 			for k, v := range new.EnumValues {
 				if outSchema.EnumValues == nil {
 					outSchema.EnumValues = map[string]string{}

@@ -147,9 +147,11 @@ var body {{.Schema.GoType}}
 
 	    {{ if eq .ContentType "application/json" }}
 if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-apiErr := APIError{Status: http.StatusBadRequest, Message: "decoding request body"}
-return nil, apiErr.Wrap(err)
+return nil, Errorw(http.StatusBadRequest, "decoding request body", err)
 }
+{{ range .Schema.Properties }}
+// property '{{.JsonFieldName}}'
+{{end}}
 		    {{ template "kit-parameter-check" .  }}
 
 return body, nil
