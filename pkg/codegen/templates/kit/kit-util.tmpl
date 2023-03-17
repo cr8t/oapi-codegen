@@ -58,6 +58,11 @@ values := r.URL.Query()["{{.ParamName}}"]
 {{$paramName := .ParamName}}
 {{ range .Schema.Properties }}
 {{.GoVariableName}}Value := QueryGetSubValue[*{{.Schema.GoType}}](r.URL.Query(), "{{$paramName}}", "{{.JsonFieldName}}", nil)
+{{ if .Required }}
+if {{.GoVariableName}}Value == nil {
+   return nil, Error(http.StatusBadRequest, "missing required parameter '{{$paramName}}.{{.JsonFieldName}}'")
+}
+{{ end }}
 {{ end }}
 {{$paramName}} := &{{.Schema.GoType}}{ {{ range .Schema.Properties }}
 {{.GoFieldName}}: {{if .Required}}*{{end}}{{.GoVariableName}}Value,
