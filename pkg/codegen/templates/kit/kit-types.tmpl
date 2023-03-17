@@ -93,6 +93,15 @@ return ret
 return *self.{{.GoFieldName}}
 {{- end }}
 }
+
+func (self *{{$typeName}}) Set{{.GoFieldName}} (val {{.Schema.GoType}}) {
+self.{{.GoFieldName}} = {{if not .Required }}&{{end}}val
+}
+
+func (self {{$typeName}}) With{{.GoFieldName}} (val {{.Schema.GoType}}) {{$typeName}} {
+self.{{.GoFieldName}} = {{if not .Required }}&{{end}}val
+return self
+}
 {{ end }}
 {{end}}
 
