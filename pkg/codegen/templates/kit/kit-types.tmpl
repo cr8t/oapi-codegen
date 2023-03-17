@@ -80,6 +80,7 @@ func (err APIError) Unwrap() error {
 {{ with .Schema.Description }}{{ . }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}
 type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.TypeDecl}}
 
+{{ if not .Schema.ArrayType }}
 {{$typeName := .TypeName}}
 {{ range .Schema.Properties }}
 func (self {{$typeName}}) Get{{.GoFieldName}} () {{.Schema.GoType}} {
@@ -102,6 +103,7 @@ func (self {{$typeName}}) With{{.GoFieldName}} (val {{.Schema.GoType}}) {{$typeN
 self.{{.GoFieldName}} = {{if not .Required }}&{{end}}val
 return self
 }
+{{ end }}
 {{ end }}
 {{end}}
 
