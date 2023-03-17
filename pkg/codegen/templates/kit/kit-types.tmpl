@@ -79,6 +79,21 @@ func (err APIError) Unwrap() error {
 {{range .Types}}
 {{ with .Schema.Description }}{{ . }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}
 type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.TypeDecl}}
+
+{{$typeName := .TypeName}}
+{{ range .Schema.Properties }}
+func (self {{$typeName}}) Get{{.GoFieldName}} () {{.Schema.GoType}} {
+{{- if .Required }}
+return self.{{.GoFieldName}}
+{{- else }}
+var ret {{.Schema.GoType}}
+if self.{{.GoFieldName}} == nil {
+return ret
+}
+return *self.{{.GoFieldName}}
+{{- end }}
+}
+{{ end }}
 {{end}}
 
 // QueryGetSubValue will get a value from a nested "parameter object".
