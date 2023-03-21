@@ -1,0 +1,43 @@
+{{range . -}}{{$opid := .OperationId}}
+func Make{{$opid}}Endpoint(svc Service) endpoint.Endpoint {
+return func(ctx context.Context, request interface{}) (interface{}, error) {
+
+{{if .AllParams}}
+req, ok := request.({{$opid}}Request)
+{{else if .HasBody }}
+req, ok := request.({{(index .Bodies 0).Schema.GoType}})
+{{end}}
+{{if or .AllParams .HasBody}}
+if !ok {
+return nil, Error(http.StatusInternalServerError, "invalid request, expected {{if .AllParams}}{{$opid}}Request{{else if .HasBody}}{{(index .Bodies 0).Schema.GoType}}{{end}}")
+}
+{{end}}
+
+
+{{ if not .GetResponseTypeDefinitions }}
+
+if err := svc.{{$opid}}{{template "kit-endpoint-call" .}}; err != nil {
+return nil, err
+}
+return nil, nil
+
+{{else if .AllParams }}
+res, err := svc.{{$opid}}{{template "kit-endpoint-call" .}}
+if err != nil {
+return nil, err
+}
+return res, nil
+
+{{else}}
+
+res, err := svc.{{$opid}}{{template "kit-endpoint-call" .}}
+if err != nil {
+return nil, err
+}
+return res, nil
+
+{{end}}
+}
+}
+
+{{ end -}}

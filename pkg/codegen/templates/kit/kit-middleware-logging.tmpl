@@ -1,0 +1,52 @@
+// WithLoggingMiddleware wraps the provided service with logging
+// middleware using the provided logger
+func WithLoggingMiddleware(logger kitlog.Logger, next Service) Service {
+	return loggingMiddleware{kitlog.With(logger, "layer", "gokit"), next}
+	}
+    
+type loggingMiddleware struct {
+	logger kitlog.Logger
+	next   Service
+}
+
+{{range . -}}{{$opid := .OperationId}}
+
+func (mw loggingMiddleware) {{$opid}}{{template "kit-function-signature" .}} {
+	var err error
+	defer func(begin time.Time) {
+	method := "{{$opid}}"
+	if method == "HealthCheck" && err == nil { return; }
+	duration := time.Since(begin)
+	ms := toFixed(float64(time.Since(begin))/float64(time.Millisecond), 2)
+		var coder httptransport.StatusCoder
+		if errors.As(err, &coder) {
+		mw.logger.Log(
+			"method", method,
+			"error", err.Error(),
+			"code", coder.StatusCode(),
+			"duration", duration,
+			"ms", ms,
+		)
+		} else {
+		args := []interface{}{
+			"method", method,
+			"duration", duration,
+			"ms", ms,
+		}
+		if err != nil {
+		  args = append(args, "error", err.Error())
+		}
+		mw.logger.Log(args...)
+		}
+	}(time.Now())
+
+{{ if not .GetResponseTypeDefinitions }}
+   err = mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+   return err
+{{else}}
+   output, err := mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+   return output, err
+{{end}}
+
+}
+{{end}}

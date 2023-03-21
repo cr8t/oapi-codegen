@@ -1,0 +1,27 @@
+func New(logger api.Logger) api.Service {
+	return &service{
+		logger: logger.With("layer", "service"),
+	}
+}
+
+type service struct {
+	logger api.Logger
+}
+
+{{range . -}}
+{{.SummaryAsComment}}
+func (svc service) {{.OperationId}}{{template "kit-function-signature-external" .}} {
+{{- if eq .OperationId "HealthCheck" }}
+// any health checking of the service goes here, like checking a
+// database connection
+   return nil
+{{- else }}
+	svc.logger.Msg("this service method must be implemented")
+{{- if not .GetResponseTypeDefinitions }}
+   return api.Error(http.StatusNotImplemented, "not implemented")
+{{- else }}
+   return nil, api.Error(http.StatusNotImplemented, "not implemented")
+{{- end }}
+{{- end }}
+}
+{{end}}

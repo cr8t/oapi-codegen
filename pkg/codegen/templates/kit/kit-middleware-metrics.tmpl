@@ -1,0 +1,53 @@
+// WithMetricsMiddleware wraps the provided service with metrics
+// middleware powered by prometheus using the provided namespace
+// and subsystem
+func WithMetricsMiddleware(namespace, subsystem string, next Service) Service {
+fieldKeys := []string{"method", "error"}
+	requestCount := kitprometheus.NewCounterFrom(stdprometheus.CounterOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "request_count",
+		Help:      "Number of requests received.",
+	}, fieldKeys)
+	requestLatency := kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "request_latency_microseconds",
+		Help:      "Total duration of requests in microseconds.",
+	}, fieldKeys)
+	countResult := kitprometheus.NewSummaryFrom(stdprometheus.SummaryOpts{
+		Namespace: namespace,
+		Subsystem: subsystem,
+		Name:      "count_result",
+		Help:      "The result of each count method.",
+	}, []string{})
+	return metricsMiddleware{requestCount, requestLatency, countResult, next}
+	}
+
+type metricsMiddleware struct {
+	requestCount   metrics.Counter
+	requestLatency metrics.Histogram
+	countResult    metrics.Histogram
+	next           Service
+}
+
+{{range . -}}{{$opid := .OperationId}}
+
+func (mw metricsMiddleware) {{$opid}}{{template "kit-function-signature" .}} {
+	var err error
+	defer func(begin time.Time) {
+		lvs := []string{"method", "{{$opid}}", "error", fmt.Sprint(err != nil)}
+		mw.requestCount.With(lvs...).Add(1)
+		mw.requestLatency.With(lvs...).Observe(time.Since(begin).Seconds())
+	}(time.Now())
+
+{{ if not .GetResponseTypeDefinitions }}
+   err = mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+   return err
+{{else}}
+   output, err := mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+   return output, err
+{{end}}
+
+}
+{{end}}

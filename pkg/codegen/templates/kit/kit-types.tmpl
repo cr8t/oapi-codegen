@@ -1,0 +1,288 @@
+// APIError implements the StatusCode, MarshalJSON, Unwrap, and Error
+// methods and is intended to be used as a return from service methods
+// when a non 500 return code is needed
+type APIError struct {
+     Code string `json:"code,omitempty"`
+     Status int `json:"status,omitempty"`
+     Message string `json:"error,omitempty"`
+     Details string `json:"details,omitempty"` // generated from err, here for unmarshaling
+     err error
+}
+
+// Error returns a new APIError with the code and message indicated
+func Error(status int, message string) error {
+     return APIError{Status: status, Message: message}
+}
+
+// Errorf returns a new APIError with the code and message derived
+// from the format string and arguments
+func Errorf(status int, format string, args ...interface{}) error {
+     return APIError{Status: status, Message: fmt.Sprintf(format, args...)}
+}
+
+// Errorw returns a new APIError with the code and message and
+// wrapping the supplied error
+func Errorw(status int, message string, err error) error {
+     return (APIError{Status: status, Message: message}).Wrap(err)
+}
+
+func (err APIError) Error() string {
+     var codes []string
+     if err.Code != "" {
+     codes = append(codes, err.Code)
+     }
+     if err.Status != 0 {
+     codes = append(codes, fmt.Sprint(err.Status))
+     }
+     codeStr := ""
+     if len(codes) > 0 {
+     codeStr = fmt.Sprintf("[%s] ", strings.Join(codes, "/"))
+     }
+     if err.err != nil {
+        return fmt.Sprintf("%s%s: %s", codeStr, err.Message, err.err)
+     } else if err.Details != "" {
+        return fmt.Sprintf("%s%s: %s", codeStr, err.Message, err.Details)
+     }
+     return fmt.Sprintf("%s%s", codeStr, err.Message)
+}
+
+func (err APIError) StatusCode() int {
+     return err.Status
+}
+
+func (err APIError) MarshalJSON() ([]byte, error) {
+
+     data := map[string]interface{}{}
+     data["error"] = err.Message
+     if err.err != nil {
+          data["details"] = err.err.Error()
+     }
+     if err.Code != "" {
+          data["code"] = err.Code
+     }     
+     if err.Status != 0 {
+          data["status"] = err.Status
+     }     
+
+return json.Marshal(data)
+}
+
+func (err APIError) Wrap(towrap error) error {
+     err.err = towrap
+     return err
+}
+
+func (err APIError) Unwrap() error {
+     return err.err
+}
+
+{{range .Types}}
+{{ with .Schema.Description }}{{ . }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}
+type {{.TypeName}} = {{.Schema.TypeDecl}}
+
+{{ if not .Schema.ArrayType }}
+{{$typeName := .TypeName}}
+{{ range .Schema.Properties }}
+func (self {{$typeName}}) Get{{.GoFieldName}} () {{.Schema.GoType}} {
+{{- if .Required }}
+return self.{{.GoFieldName}}
+{{- else }}
+var ret {{.Schema.GoType}}
+if self.{{.GoFieldName}} == nil {
+return ret
+}
+return *self.{{.GoFieldName}}
+{{- end }}
+}
+
+func (self *{{$typeName}}) Set{{.GoFieldName}} (val {{.Schema.GoType}}) {
+self.{{.GoFieldName}} = {{if not .Required }}&{{end}}val
+}
+
+func (self {{$typeName}}) With{{.GoFieldName}} (val {{.Schema.GoType}}) {{$typeName}} {
+self.{{.GoFieldName}} = {{if not .Required }}&{{end}}val
+return self
+}
+{{ end }}
+{{ end }}
+{{end}}
+
+// QueryGetSubValue will get a value from a nested "parameter object".
+//
+// This will search the url values based on a few different key
+// schema. For example:
+//
+// val := QueryGetSubValue[*string](r.URL.Query(), "filter", "search", nil)
+//
+// will search the query parameters for search, filter.search, and
+// filter[search].
+//
+// Further nesting is possible by adding a . to the key
+// parameter. For example:
+//
+// val := QueryGetSubValue[*string](r.URL.Query(), "filter", "updated_at.since", nil)
+//
+// will search the query parameters for updated_at.since,
+// filter.updated_at.sinse, and filter[updated_at][since].
+//
+func QueryGetSubValue[T comparable](values url.Values, prefix, key string, defaultVal T) T {
+	parts := strings.Split(key, ".")
+	keys := []string{
+		key,
+		fmt.Sprintf("%s[%s]", prefix, strings.Join(parts, "][")),
+		fmt.Sprintf("%s.%s", prefix, key),
+	}
+
+	var val T
+	for _, key := range keys {
+		val = QueryGetValue(values, key, defaultVal)
+		if val != defaultVal {
+			break
+		}
+	}
+	return val
+}
+
+// QueryGetValue will try to get a value from the provided url.Values,
+// returning the default value if not found
+//
+// To get a nil value, you must provide a type in the call, otherwise,
+// go will infer the type. For example:
+//
+// val := QueryGetValue(r.URL.Query(), "foo", "bar")
+// nilVal := QueryGetValue[*string](r.URL.Query(), "optional", nil)
+//
+func QueryGetValue[T any](values url.Values, key string, defaultVal T) T {
+	urlVal, ok := values[key]
+	if !ok {
+		return defaultVal
+	}
+
+
+	var ret any
+	switch any(defaultVal).(type) {
+	case string:
+		ret = urlVal[0]
+	case *string:
+		ret = &(urlVal[0])
+	case []string:
+		ret = urlVal
+	case []int:
+		ints := make([]int, len(urlVal))
+		for i, v := range urlVal {
+			val, err := strconv.Atoi(v)
+			if err != nil {
+				continue
+			}
+			ints[i] = val
+		}
+		ret = ints
+	case bool, *bool:
+        var val bool
+        var err error
+        if urlVal[0] == "" {
+          val = true
+        } else {
+	      val, err = strconv.ParseBool(urlVal[0])
+		  if err != nil {
+	    		return defaultVal
+		  }
+        }
+		switch any(defaultVal).(type) {
+		  case bool:
+		  	   ret = val
+		  case *bool:
+		  	   ret = &val
+ 		}
+	case int, *int, uint, *uint:
+	    val, err := strconv.Atoi(urlVal[0])
+		if err != nil {
+			return defaultVal
+		}
+		switch any(defaultVal).(type) {
+		  case int:
+		  	   ret = val
+		  case *int:
+		  	   ret = &val
+		  case uint:
+		  	   ret = uint(val)
+		  case *uint:
+               uval := uint(val)
+		  	   ret = &uval
+		}
+	case int64, *int64:
+	    val, err := strconv.ParseInt(urlVal[0], 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+		switch any(defaultVal).(type) {
+		  case int64:
+		  	   ret = val
+		  case *int64:
+		  	   ret = &val
+		}
+	case float64, *float64:
+	    val, err := strconv.ParseFloat(urlVal[0], 64)
+		if err != nil {
+			return defaultVal
+		}
+		switch any(defaultVal).(type) {
+		  case float64:
+		  	   ret = val
+		  case *float64:
+		  	   ret = &val
+		}
+{{range .Types}}
+{{- if (or
+	(eq "int" .Schema.GoType)
+	(eq "int32" .Schema.GoType)
+	(eq "int64" .Schema.GoType)
+	(eq "float64" .Schema.GoType)
+	(eq "float32" .Schema.GoType)
+	(eq "string" .Schema.GoType)
+	(eq "bool" .Schema.GoType)) }}
+	case {{.TypeName}}, *{{.TypeName}}:
+{{- if (or
+	(eq "int" .Schema.GoType)
+	(eq "int32" .Schema.GoType)
+	(eq "int64" .Schema.GoType)) }}
+	    val, err := strconv.ParseInt(urlVal[0], 10, 64)
+		if err != nil {
+			return defaultVal
+		}
+{{- else if (or
+	(eq "float64" .Schema.GoType)
+	(eq "float32" .Schema.GoType)) }}
+	    val, err := strconv.ParseFloat(urlVal[0], 64)
+		if err != nil {
+			return defaultVal
+		}
+{{- else if (eq "bool" .Schema.GoType) }}
+        var val bool
+        var err error
+        if urlVal[0] == "" {
+          val = true
+        } else {
+	      val, err = strconv.ParseBool(urlVal[0])
+		  if err != nil {
+	    		return defaultVal
+		  }
+        }
+{{- else }}
+		val := urlVal[0]
+{{- end}}
+	    retVal := {{.TypeName}}(val)
+		switch any(defaultVal).(type) {
+		  case {{.TypeName}}:
+		  	   ret = retVal
+		  case *{{.TypeName}}:
+		  	   ret = &retVal
+		}
+{{- end }}
+{{end}}
+
+    }
+	return ret.(T)
+
+}
+
