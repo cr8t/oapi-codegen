@@ -1,0 +1,257 @@
+type RouterOptions struct {
+Prefix string
+NotFoundHandler http.HandlerFunc
+MethodNotAllowedHandler http.HandlerFunc
+Middleware []func(http.Handler) http.Handler
+}
+
+// GetRouter returns a github.com/go-chi/chi router with the routes
+// in the spec already set up
+func GetRouter(svc Service, logger kitlog.Logger, opts *RouterOptions) chi.Router {
+	 r := chi.NewRouter()
+	 if logger != nil {
+	 	logger = kitlog.With(logger, "layer", "httptransport")
+	 	 r.Use(makeHTTPLoggingMiddleware(logger))
+	 }
+
+	prefix := ""
+    
+	notFoundHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	   EncodeErrorResponse(r.Context(), Error(http.StatusNotFound, "not found"), w)
+	 })
+     
+	methodNotAllowedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	   EncodeErrorResponse(r.Context(), Errorf(http.StatusMethodNotAllowed, "%s not allowed", r.Method), w)
+	 })
+     
+	if opts != nil {
+
+	   for _, mw := range opts.Middleware {
+	   	   r.Use(mw)
+	   }
+	
+		if opts.Prefix != "" {
+			prefix = opts.Prefix
+		if prefix[0] != '/' {
+			prefix = "/" + prefix
+		}
+		if prefix[len(prefix)-1] == '/' {
+			prefix = prefix[0:len(prefix)-1]
+		}
+		}
+
+		if opts.NotFoundHandler != nil {
+		   notFoundHandler = opts.NotFoundHandler
+		}
+		if opts.MethodNotAllowedHandler != nil {
+		   methodNotAllowedHandler = opts.MethodNotAllowedHandler
+		}
+
+	}
+	
+{{range . -}}{{$opid := .OperationId}}
+     {{if and
+	 (eq (len .PathParams) 1)
+	 (eq (index .PathParams 0).Spec.Schema.Value.Format "path")}}
+	 r.Method("{{.Method}}", fmt.Sprintf("%s{{.Path | swaggerUriToChiPathUri}}", prefix), Make{{$opid}}Handler(svc))
+	 {{ else }}
+	 r.Method("{{.Method}}", fmt.Sprintf("%s{{.Path | swaggerUriToChiUri}}", prefix), Make{{$opid}}Handler(svc))
+	 {{ end }}
+{{end}}
+	
+	 r.NotFound(notFoundHandler)
+	 r.MethodNotAllowed(methodNotAllowedHandler)
+	 return r
+}
+
+type loggingResponseWriter struct {
+	http.ResponseWriter
+	statusCode int
+	body []byte
+}
+
+func newLoggingResponseWriter(w http.ResponseWriter) *loggingResponseWriter {
+	return &loggingResponseWriter{
+		ResponseWriter: w,
+		statusCode: http.StatusOK,
+	}
+}
+
+    func (lrw *loggingResponseWriter) WriteHeader(code int) {
+        lrw.statusCode = code
+        lrw.ResponseWriter.WriteHeader(code)
+    }
+
+func (lrw *loggingResponseWriter) Write(data []byte) (int, error) {
+	lrw.body = data
+	return lrw.ResponseWriter.Write(data)
+}
+
+func makeHTTPLoggingMiddleware(logger kitlog.Logger) func(http.Handler) http.Handler {
+  return func(next http.Handler) http.Handler {
+      return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	  lwr := newLoggingResponseWriter(w)
+	defer func(begin time.Time) {
+	duration := time.Since(begin)
+	ms := toFixed(float64(time.Since(begin))/float64(time.Millisecond), 2)
+	if r.URL.Path == "/healthz" && lwr.statusCode == http.StatusOK { return; }
+				kvs := []interface{}{
+					"method", r.Method,
+					"path", r.URL.Path,
+					"status", lwr.statusCode,
+					"duration", duration,
+					"ms", ms,
+				}
+				if lwr.statusCode != http.StatusOK && lwr.body != nil {
+					var apiErr APIError
+					if err := json.Unmarshal(lwr.body, &apiErr); err != nil {
+						kvs = append(kvs, "error", string(lwr.body))	
+					} else {
+						kvs = append(kvs, "error", apiErr.Error())
+					}
+				}
+				logger.Log(kvs...)
+	}(time.Now())
+          next.ServeHTTP(lwr, r)
+      })
+  }
+}
+
+
+type DecodeRequestFunc httptransport.DecodeRequestFunc
+
+{{range . -}}{{$opid := .OperationId}}{{$op := . }}
+// Make{{$opid}}Handler makes an http.Handler for the service method {{$opid}}.
+//
+// This is called automatically by GetRouter, but these are exported
+// so that methods can be mounted manually with chi in the
+// implementation
+func Make{{$opid}}Handler(svc Service) http.Handler {
+return httptransport.NewServer(
+		Make{{$opid}}Endpoint(svc),
+		httptransport.DecodeRequestFunc(decode{{$opid}}Request),
+		EncodeResponse,
+		httptransport.ServerErrorEncoder(EncodeErrorResponse),
+	)
+}
+
+var decode{{$opid}}Request DecodeRequestFunc = func(ctx context.Context, r *http.Request) (interface{}, error) {
+
+{{ if .HasBody }}
+contentType := r.Header.Get("content-type")
+switch contentType {
+
+	{{ range .Bodies }}
+case "{{.ContentType}}"{{ if .Default }}, ""{{end}}:
+var body {{.Schema.GoType}}
+
+	    {{ if eq .ContentType "application/json" }}
+if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+return nil, Errorw(http.StatusBadRequest, "decoding request body", err)
+}
+{{ range .Schema.Properties }}
+// property '{{.JsonFieldName}}'
+{{end}}
+		    {{ template "kit-parameter-check" .  }}
+
+return body, nil
+	    {{ else }}
+return nil, Error(http.StatusNotImplemented, "{{.ContentType}} bodies are not implemented by the generator")
+	    {{ end }}
+
+	{{ end }}
+
+default:
+return nil, Errorf(http.StatusBadRequest, "'content-type: %s' not supported", contentType)
+}
+
+
+
+{{ else if or .PathParams .QueryParams }}
+    {{range .PathParams -}}
+	{{ template "kit-path-parameter-decode" .  }}
+	{{end}}
+
+    {{range .QueryParams -}}
+	{{ template "kit-query-parameter-decode" .  }}
+	{{end}}
+	
+return {{$opid}}Request {
+{{range .PathParams -}}
+{{.GoName}}: {{if .Required}}*{{end}}{{.GoVariableName}},
+{{end -}}
+{{range .QueryParams -}}
+{{.GoName}}: {{if .Required}}*{{end}}{{.GoVariableName}},
+{{end -}}
+}, nil
+
+{{ else }}
+  return nil, nil
+{{ end }}
+}
+
+// SetDecode{{$opid}}Request sets the request decoder for {{$opid}}
+func SetDecode{{$opid}}Request(fn DecodeRequestFunc) {
+decode{{$opid}}Request = fn
+}
+
+
+{{ end }}
+
+const headerXPoweredBy = "four elephants atop a giant turtle"
+
+func EncodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
+	w.Header().Set("x-powered-by", headerXPoweredBy)
+	if response == nil {
+	  return nil
+	}
+	w.Header().Set("content-type", "application/json")
+	return json.NewEncoder(w).Encode(response)
+}
+
+func EncodeErrorResponse(_ context.Context, err error, w http.ResponseWriter) {
+
+	w.Header().Set("content-type", "application/json")
+	w.Header().Set("x-powered-by", headerXPoweredBy)
+
+	code := http.StatusInternalServerError
+	var sc httptransport.StatusCoder
+	if errors.As(err, &sc) {
+		code = sc.StatusCode()
+	}
+	if http.StatusText(code) == "" {
+	   code = http.StatusInternalServerError
+	}
+
+	var headerer httptransport.Headerer
+	if errors.As(err, &headerer) {
+		for k, values := range headerer.Headers() {
+			for _, v := range values {
+				w.Header().Add(k, v)
+			}
+		}
+	}
+
+	w.WriteHeader(code)
+
+	var apiErr APIError
+	if errors.As(err, &apiErr) {
+		json.NewEncoder(w).Encode(apiErr)
+		return
+	} else if _, ok := err.(json.Marshaler); !ok {
+		err = Error(code, err.Error())
+	}
+
+
+	json.NewEncoder(w).Encode(err)
+}
+
+
+func toFixed(num float64, precision int) float64 {
+	output := math.Pow(10, float64(precision))
+	return float64(round(num*output)) / output
+}
+
+func round(num float64) int {
+	return int(num + math.Copysign(0.5, num))
+}

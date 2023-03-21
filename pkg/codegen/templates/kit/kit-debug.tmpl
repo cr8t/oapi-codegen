@@ -1,0 +1,22 @@
+{{range . -}}
+// -------- {{.OperationId}}
+// method = {{.Method}}
+// path = {{.Path}}
+// has body = {{ .HasBody }}
+// has response types = {{if .GetResponseTypeDefinitions}}yes{{else}}no{{end}}
+// has type defs = {{if .TypeDefinitions}}yes{{else}}no{{end}}
+// has params = {{if .AllParams}}yes{{else}}no{{end}}
+// has path params = {{if .PathParams}}yes{{else}}no{{end}}
+// has query params = {{if .QueryParams}}yes{{else}}no{{end}}
+{{- if .HasBody }}
+{{- range .Bodies }}
+//
+// {{.ContentType}} body
+// required = {{.Required}}
+// name tag = {{.NameTag}}
+// default = {{.Default}}
+// {{ .Schema }}
+{{- end }}
+{{- end }}
+
+{{end}}

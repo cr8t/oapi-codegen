@@ -1,0 +1,55 @@
+// WithChaosMiddleware wraps the provided service with chaos
+// middleware using the provided logger
+func WithChaosMiddleware(factor, max int, next Service) Service {
+	rand.Seed(time.Now().UnixNano())
+	return chaosMiddleware{factor, max, next}
+	}
+    
+// ErrChaos is the base chaos error that is wrapped
+var ErrChaos = fmt.Errorf("CHAOS STRIKES")
+
+// ChaosStatusCodes is an array of status codes from which to randomly
+// select for the chaos status code
+var ChaosStatusCodes = []int{http.StatusInternalServerError, http.StatusServiceUnavailable}
+
+var GetChaosError func() error  = getChaosError
+
+func getChaosError() error {
+code := ChaosStatusCodes[rand.Intn(len(ChaosStatusCodes))]
+err := APIError{Status: code, Message: http.StatusText(code)}
+return err.Wrap(ErrChaos)
+}
+
+// MaybeChaos will return an error, maybe
+func MaybeChaos(factor, max int) error {
+	if rand.Intn(max) < factor {
+		return GetChaosError()
+	}
+	return nil
+}
+
+func (mw chaosMiddleware) maybeChaos() error {
+return MaybeChaos(mw.factor, mw.max)
+}
+
+
+type chaosMiddleware struct {
+	factor, max int
+	next   Service
+}
+
+{{range . -}}{{$opid := .OperationId}}
+
+func (mw chaosMiddleware) {{$opid}}{{template "kit-function-signature" .}} {
+{{- if not .GetResponseTypeDefinitions }}
+   if chaos := mw.maybeChaos(); chaos != nil {
+   	  return chaos
+   }
+{{- else}}
+   if chaos := mw.maybeChaos(); chaos != nil {
+   	  return nil, chaos
+   }
+{{- end}}
+   return mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+}
+{{end}}

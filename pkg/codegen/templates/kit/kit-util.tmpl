@@ -1,0 +1,373 @@
+{{define "kit-path-parameter-decode" -}}
+        {{if (eq .Spec.Schema.Value.Format "path")}}
+        {{.GoVariableName}}Str := chi.URLParam(r, "*")
+	    {{ else }}
+        {{.GoVariableName}}Str := chi.URLParam(r, "{{.ParamName}}")
+	    {{ end }}
+
+		{{ template "kit-parameter-decode" . }}
+
+{{end}}
+
+{{define "kit-query-parameter-decode" -}}
+
+{{ if not .Schema.OAPISchema }}
+        {{.GoVariableName}}Str := QueryGetValue(r.URL.Query(), "{{.ParamName}}", "")
+		{{ template "kit-parameter-decode" . }}
+{{ else }}
+
+// oapi type: {{.Schema.OAPISchema.Type}}
+// oapi format: {{.Schema.OAPISchema.Format}}
+
+		 {{ if eq .Schema.OAPISchema.Type "array" }}
+
+		{{ template "kit-array-parameter-decode" . }}
+		 
+		 {{ else if eq .Schema.OAPISchema.Type "object" }}
+
+		{{ template "kit-object-parameter-decode" . }}
+		 
+		 {{ else }}
+		 
+		{{ if not (eq .Schema.OAPISchema.Type "boolean") }}
+        {{.GoVariableName}}Str := QueryGetValue(r.URL.Query(), "{{.ParamName}}", "")
+		{{ end }}
+		
+		{{ template "kit-parameter-decode" . }}
+		
+		 {{ end }}
+
+{{ end }}
+
+{{end}}
+
+{{define "kit-array-parameter-decode" -}}
+// oapi array type: {{.Schema.OAPISchema.Items.Value.Type}}
+// oapi array format: {{.Schema.OAPISchema.Items.Value.Format}}
+
+		 
+values := r.URL.Query()["{{.ParamName}}"]
+
+{{if eq .Schema.OAPISchema.Items.Value.Type "string" }}
+	 {{.GoVariableName}} := &values
+{{ end }}
+
+{{end}}
+
+{{define "kit-object-parameter-decode" -}}
+{{$paramName := .ParamName}}
+{{ range .Schema.Properties }}
+{{.GoVariableName}}Value := QueryGetSubValue[*{{.Schema.GoType}}](r.URL.Query(), "{{$paramName}}", "{{.JsonFieldName}}", nil)
+{{ if .Required }}
+if {{.GoVariableName}}Value == nil {
+   return nil, Error(http.StatusBadRequest, "missing required parameter '{{$paramName}}.{{.JsonFieldName}}'")
+}
+{{ end }}
+{{ end }}
+{{$paramName}} := &{{.Schema.GoType}}{ {{ range .Schema.Properties }}
+{{.GoFieldName}}: {{if .Required}}*{{end}}{{.GoVariableName}}Value,
+{{- end }}
+}
+
+{{end}}
+
+{{define "kit-parameter-decode" -}}
+        {{if .Required }}
+        if {{.GoVariableName}}Str == "" {
+		   return nil, Error(http.StatusBadRequest, "missing required parameter '{{.ParamName}}'")
+		}
+        {{end}}
+		
+
+		var {{.GoVariableName}} *{{.Schema.GoType}}
+		{{if eq .Schema.GoType "int" }}
+  
+			{{.GoVariableName}}Param, err := strconv.Atoi({{.GoVariableName}}Str)
+			if err != nil {
+			  return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
+			}
+			{{.GoVariableName}} = &{{.GoVariableName}}Param
+          {{else if eq .Schema.GoType "int64"}}
+          
+        {{.GoVariableName}}Param, err := strconv.ParseInt({{.GoVariableName}}Str, 10, 64)
+        if err != nil {
+          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
+        }
+        {{.GoVariableName}} = &{{.GoVariableName}}Param
+        
+        
+          {{else if eq .Schema.GoType "float64"}}
+          
+        {{.GoVariableName}}Param, err := strconv.ParseFloat({{.GoVariableName}}Str, 64)
+        if err != nil {
+          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', double required")
+        }
+        {{.GoVariableName}} = &{{.GoVariableName}}Param
+		
+          {{else if eq .Schema.GoType "time.Time"}}
+          
+        {{.GoVariableName}}Param, err := time.Parse({{.GoVariableName}}Str, time.RFC3339Nano)
+        if err != nil {
+          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', RFC3339 date string required")
+        }
+        {{.GoVariableName}} = &{{.GoVariableName}}Param
+		
+        
+          {{else if eq .Schema.GoType "string"}}
+          
+        {{.GoVariableName}} = &{{.GoVariableName}}Str
+        
+  {{ else if gt (len .Schema.EnumValues) 0 }}
+        	{{.GoVariableName}}Cast := {{.Schema.GoType}}(EnumNormalize({{.GoVariableName}}Str))
+            {{.GoVariableName}} = &{{.GoVariableName}}Cast
+// checking enum property '{{.ParamName}}'
+  {{ if .Required }}
+  if {{.GoVariableName}} != nil && !IsValid{{.Schema.GoType}}(*{{.GoVariableName}}) {
+  	 return nil, Error(http.StatusBadRequest, "invalid value for '{{.ParamName}}'")
+  }
+  {{ else }}
+  if {{.GoVariableName}} == nil || !IsValid{{.Schema.GoType}}(*{{.GoVariableName}}) {
+  	 {{.GoVariableName}} = nil
+  }
+  {{ end }}
+
+{{ else if .Schema.OAPISchema }}
+
+   {{ if eq .Schema.OAPISchema.Type "string" }}
+   	  {{ if eq .Schema.OAPISchema.Format "date-time" }}
+	  	 {{.GoVariableName}}Param, err := time.Parse({{.GoVariableName}}Str, time.RFC3339Nano)
+        if err != nil {
+          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', RFC3339 date string required")
+        }
+      	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Param)
+	  {{ else if eq .Schema.OAPISchema.Format "date" }}
+	  	 {{.GoVariableName}}Param, err := time.Parse({{.GoVariableName}}Str, "2006-01-02")
+        if err != nil {
+          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', RFC3339 date string required")
+        }
+      	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Param)
+	  {{ else }}
+      	{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Str)
+	  {{ end }}
+   {{ else if eq .Schema.OAPISchema.Type "boolean" }}
+      	{{.GoVariableName}}Cast := {{.Schema.GoType}}(QueryGetValue(r.URL.Query(), "{{.ParamName}}", false))
+   {{ else if eq .Schema.OAPISchema.Type "integer" }}
+   	  {{ if eq .Schema.OAPISchema.Format "int64" }}
+        {{.GoVariableName}}Param, err := strconv.ParseInt({{.GoVariableName}}Str, 10, 64)
+        if err != nil {
+          return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
+        }
+			{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Param)
+	  {{ else }}
+			{{.GoVariableName}}Param, err := strconv.Atoi({{.GoVariableName}}Str)
+			if err != nil {
+			  return nil, Error(http.StatusBadRequest, "invalid parameter '{{.ParamName}}', int required")
+			}
+			{{.GoVariableName}}Cast := {{.Schema.GoType}}({{.GoVariableName}}Param)
+	  {{ end }}
+   {{ end }}
+
+        {{.GoVariableName}} = &{{.GoVariableName}}Cast
+	
+  {{end}}
+  
+{{end}}
+
+
+{{define "kit-parameter-check" -}}
+{{ range .Schema.Properties }}
+{{ if .Required }}
+  {{if eq .Schema.GoType "string" }}
+// checking required property '{{.JsonFieldName}}'
+  if body.{{.GoFieldName}} == "" {
+  	 return nil, Error(http.StatusBadRequest, "missing required value for '{{.JsonFieldName}}'")
+  }
+  {{ else if .Schema.ArrayType }}
+// checking required property '{{.JsonFieldName}}'
+  if len(body.{{.GoFieldName}}) == 0 {
+  	 return nil, Error(http.StatusBadRequest, "missing required value for '{{.JsonFieldName}}'")
+  }
+  {{ else if gt (len .Schema.EnumValues) 0 }}
+// checking enum property '{{.JsonFieldName}}'
+  if !IsValid{{.Schema.GoType}}(body.{{.GoFieldName}}) {
+  	 return nil, Error(http.StatusBadRequest, "missing or invalid value for '{{.JsonFieldName}}'")
+  }
+  {{ end }}
+{{ else }}
+  {{  if gt (len .Schema.EnumValues) 0 }}
+// checking enum property '{{.JsonFieldName}}'
+  if body.{{.GoFieldName}} != nil && !IsValid{{.Schema.GoType}}(*body.{{.GoFieldName}}) {
+  	 return nil, Error(http.StatusBadRequest, "invalid value for '{{.JsonFieldName}}'")
+  }
+  {{ end }}
+{{ end }}
+  
+{{ end }}
+{{- end }}
+
+{{define "kit-function-signature-external-params" -}}
+{{range $index, $param := .PathParams -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{$param.Schema.GoType -}}
+{{- end -}}
+{{range $index, $param := .QueryParams -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{$param.Schema.GoType -}}
+{{- end -}}
+{{range $index, $param := .HeaderParams -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{$param.Schema.GoType -}}
+{{- end -}}
+{{range $index, $param := .CookieParams -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{- if not (or
+	(eq "int" $param.Schema.GoType)
+	(eq "int32" $param.Schema.GoType)
+	(eq "int64" $param.Schema.GoType)
+	(eq "float64" $param.Schema.GoType)
+	(eq "float32" $param.Schema.GoType)
+	(eq "string" $param.Schema.GoType)
+	(eq "bool" $param.Schema.GoType)) -}}
+api.
+{{- end -}}
+{{$param.Schema.GoType -}}
+{{- end -}}
+{{- end}}
+
+{{define "kit-function-signature-params" -}}
+{{range $index, $param := .PathParams -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+{{range $index, $param := .QueryParams -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+{{range $index, $param := .HeaderParams -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+{{range $index, $param := .CookieParams -}}
+, {{- $param.GoVariableName}} {{if not $param.Required}}*{{end}}{{$param.Schema.GoType -}}
+{{- end -}}
+{{- end}}
+
+{{define "kit-middleware-call-params" -}}
+{{range $index, $param := .PathParams -}}
+, {{- $param.GoVariableName}}
+{{- end -}}
+{{range $index, $param := .QueryParams -}}
+, {{- $param.GoVariableName}}
+{{- end -}}
+{{range $index, $param := .HeaderParams -}}
+, {{- $param.GoVariableName}}
+{{- end -}}
+{{range $index, $param := .CookieParams -}}
+, {{- $param.GoVariableName}}
+{{- end -}}
+{{- end}}
+
+{{define "kit-endpoint-call-params" -}}
+{{range $index, $param := .PathParams -}}
+, req.{{- $param.GoName}}
+{{- end -}}
+{{range $index, $param := .QueryParams -}}
+, req.{{- $param.GoName}}
+{{- end -}}
+{{range $index, $param := .HeaderParams -}}
+, req.{{- $param.GoName}}
+{{- end -}}
+{{range $index, $param := .CookieParams -}}
+, req.{{- $param.GoName}}
+{{- end -}}
+{{- end}}
+
+{{define "kit-middleware-call" -}}
+(ctx
+{{- template "kit-middleware-call-params" . -}}
+{{- if .HasBody -}}
+  {{range $index, $body := .Bodies -}}
+    {{- if eq $index 0 -}}
+, data
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+)
+{{- end}}
+
+{{define "kit-endpoint-call"}}
+{{- $op := . -}}
+(ctx
+{{- template "kit-endpoint-call-params" . -}}
+{{- if .HasBody -}}
+  {{range $index, $body := .Bodies -}}
+    {{- if eq $index 0 -}}
+, {{if $op.AllParams}}req.Body{{else}}req{{end}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+)
+{{- end}}
+
+{{define "kit-function-signature" -}}
+(ctx context.Context
+{{- template "kit-function-signature-params" . -}}
+{{- if .HasBody -}}
+  {{range $index, $body := .Bodies -}}
+    {{- if eq $index 0 -}}
+, data {{$body.Schema.GoType}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+) {{ if not .GetResponseTypeDefinitions}} error {{else -}}
+( 
+{{- range $index, $return := .GetResponseTypeDefinitions -}}
+{{- if $index }}, {{end -}}
+*{{ $return.Schema.GoType }}
+{{- end -}}
+, error)
+{{- end }}
+{{- end}}
+
+{{define "kit-function-signature-external" -}}
+(ctx context.Context
+{{- template "kit-function-signature-external-params" . -}}
+{{- if .HasBody -}}
+  {{range $index, $body := .Bodies -}}
+    {{- if eq $index 0 -}}
+, data api.{{$body.Schema.GoType}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+) {{ if not .GetResponseTypeDefinitions}} error {{else -}}
+( 
+{{- range $index, $return := .GetResponseTypeDefinitions -}}
+{{- if $index }}, {{end -}}
+*api.{{ $return.Schema.GoType }}
+{{- end -}}
+, error)
+{{- end }}
+{{- end}}

@@ -1,0 +1,48 @@
+// WithTracingMiddleware wraps the provided service with tracing
+// middleware powered by zipkin using the provided service name
+// and zipkin URL
+func WithTracingMiddleware(serviceName, zipkinURL string, next Service) Service {
+
+	 reporter := httpreporter.NewReporter(zipkinURL)
+	 localEndpoint, _ := zipkin.NewEndpoint(serviceName, ":0")
+	 exporter := oczipkin.NewExporter(reporter, localEndpoint)
+	 
+	 trace.ApplyConfig(trace.Config{DefaultSampler: trace.AlwaysSample()})
+	 trace.RegisterExporter(exporter)
+	 
+	 return tracingMiddleware{next}
+}
+
+type tracingMiddleware struct {
+	next           Service
+}
+
+{{range . -}}{{$opid := .OperationId}}
+
+func (mw tracingMiddleware) {{$opid}}{{template "kit-function-signature" .}} {
+{{ if not (eq $opid "HealthCheck") }}
+
+	var (
+		span *trace.Span
+		err error
+	)
+	ctx, span = trace.StartSpan(ctx, "{{$opid}}")
+	
+{{ if not .GetResponseTypeDefinitions }}
+   err = mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+   span.End()
+   return err
+{{else}}
+   output, err := mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+   span.End()
+   return output, err
+{{end}}
+
+
+{{else}}
+    return mw.next.{{$opid}}{{template "kit-middleware-call" .}}
+{{end}}
+
+
+}
+{{end}}
