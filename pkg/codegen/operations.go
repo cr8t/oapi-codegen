@@ -968,3 +968,132 @@ func GenerateTemplates(templates []string, t *template.Template, ops interface{}
 
 	return strings.Join(generatedTemplates, "\n"), nil
 }
+
+// GenerateKitTypesForOperations generates code for all types produced
+func GenerateKitTypesForOperations(t *template.Template, ops []OperationDefinition) (string, error) {
+	var buf bytes.Buffer
+	w := bufio.NewWriter(&buf)
+
+	addTypes, err := GenerateTemplates([]string{"kit/kit-req-res.tmpl"}, t, ops)
+	if err != nil {
+		return "", fmt.Errorf("error generating type boilerplate for operations: %w", err)
+	}
+	if _, err := w.WriteString(addTypes); err != nil {
+		return "", fmt.Errorf("error writing boilerplate to buffer: %w", err)
+
+	}
+
+	if err = w.Flush(); err != nil {
+		return "", fmt.Errorf("error flushing output buffer for server interface: %w", err)
+	}
+
+	return buf.String(), nil
+}
+
+// GenerateKitService This function generates all the go code for the ServerInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitService(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-interface.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitLogger This function generates all the go code for the LoggerInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitLogger(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-logger.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitReqRes This function generates all the go code for the ServerInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitReqRes(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-req-res.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitTransport This function generates all the go code for the TransportInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitTransport(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-handler.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitEndpoints This function generates all the go code for the EndpointsInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitEndpoints(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-endpoints.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitMiddlewareLogging This function generates all the go code for the MiddlewareLoggingInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitMiddlewareLogging(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-middleware-logging.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitMiddlewareTracing This function generates all the go code for the MiddlewareTracingInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitMiddlewareTracing(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-middleware-tracing.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitMiddlewareMetrics This function generates all the go code for the MiddlewareMetricsInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitMiddlewareMetrics(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-middleware-metrics.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitMiddlewareChaos This function generates all the go code for the MiddlewareChaosInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitMiddlewareChaos(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-middleware-chaos.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitMiddlewareJWT This function generates all the go code for the MiddlewareJWTInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitMiddlewareJWT(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-middleware-jwt.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitServiceStub This function generates all the go code for the ServerInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitServiceStub(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-service-stub.tmpl",
+	}, t, operations)
+}
+
+// GenerateKitClient This function generates all the go code for the ClientInterface as well as
+// all the wrapper functions around our handlers.
+func GenerateKitClient(t *template.Template, operations []OperationDefinition) (string, error) {
+	return GenerateTemplates([]string{
+		"kit/kit-util.tmpl",
+		"kit/kit-client.tmpl",
+	}, t, operations)
+}
