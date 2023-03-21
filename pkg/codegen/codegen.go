@@ -309,20 +309,28 @@ func Generate(spec *openapi3.T, packageName string, opts Configuration) (map[str
 	bufs[fileTransport] = &bytes.Buffer{}
 	bufs[fileEndpoints] = &bytes.Buffer{}
 	bufs[fileTypes] = &bytes.Buffer{}
+	bufs[fileSpec] = &bytes.Buffer{}
 	bufs[fileMiddlewareLogging] = &bytes.Buffer{}
 	bufs[fileMiddlewareTracing] = &bytes.Buffer{}
 	bufs[fileMiddlewareMetrics] = &bytes.Buffer{}
 	bufs[fileMiddlewareChaos] = &bytes.Buffer{}
+	bufs[fileServerStub] = &bytes.Buffer{}
+	bufs[fileServiceStub] = &bytes.Buffer{}
+	bufs[fileClientStub] = &bytes.Buffer{}
 
 	writers[fileService] = bufio.NewWriter(bufs[fileService])
 	writers[fileLogger] = bufio.NewWriter(bufs[fileLogger])
 	writers[fileTransport] = bufio.NewWriter(bufs[fileTransport])
 	writers[fileEndpoints] = bufio.NewWriter(bufs[fileEndpoints])
 	writers[fileTypes] = bufio.NewWriter(bufs[fileTypes])
+	writers[fileSpec] = bufio.NewWriter(bufs[fileSpec])
 	writers[fileMiddlewareLogging] = bufio.NewWriter(bufs[fileMiddlewareLogging])
 	writers[fileMiddlewareTracing] = bufio.NewWriter(bufs[fileMiddlewareTracing])
 	writers[fileMiddlewareMetrics] = bufio.NewWriter(bufs[fileMiddlewareMetrics])
 	writers[fileMiddlewareChaos] = bufio.NewWriter(bufs[fileMiddlewareChaos])
+	writers[fileServerStub] = bufio.NewWriter(bufs[fileServerStub])
+	writers[fileServiceStub] = bufio.NewWriter(bufs[fileServiceStub])
+	writers[fileClientStub] = bufio.NewWriter(bufs[fileClientStub])
 
 	externalImports := append(importMapping.GoImports(), importMap(xGoTypeImports).GoImports()...)
 	importsOut, err := GenerateImports(t, externalImports, opts.PackageName)
