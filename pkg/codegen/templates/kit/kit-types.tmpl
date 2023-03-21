@@ -78,7 +78,7 @@ func (err APIError) Unwrap() error {
 
 {{range .Types}}
 {{ with .Schema.Description }}{{ . }}{{ else }}// {{.TypeName}} defines model for {{.JsonName}}.{{ end }}
-type {{.TypeName}} {{if and (opts.AliasTypes) (.CanAlias)}}={{end}} {{.Schema.TypeDecl}}
+type {{.TypeName}} = {{.Schema.TypeDecl}}
 
 {{ if not .Schema.ArrayType }}
 {{$typeName := .TypeName}}
