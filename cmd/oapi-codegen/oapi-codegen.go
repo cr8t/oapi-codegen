@@ -225,85 +225,24 @@ func main() {
 				OutputFile: flagOutputFile,
 			}
 		}
-
-<<<<<<< HEAD
-		if err := updateConfigFromFlags(&opts); err != nil {
-			errExit("error processing flags: %v\n", err)
-		}
-	} else {
-		var oldConfig oldConfiguration
-		if flagConfigFile != "" {
-			buf, err := os.ReadFile(flagConfigFile)
-			if err != nil {
-				errExit("error reading config file '%s': %v\n", flagConfigFile, err)
-			}
-			err = yaml.Unmarshal(buf, &oldConfig)
-			if err != nil {
-				errExit("error parsing'%s' as YAML: %v\n", flagConfigFile, err)
-			}
-		}
-		opts = newConfigFromOldConfig(oldConfig)
 	}
 
-	// Ensure default values are set if user hasn't specified some needed
-	// fields.
-	opts.Configuration = opts.UpdateDefaults()
-
-	if err := detectPackageName(&opts); err != nil {
-		errExit("%s\n", err)
-	}
-
-	// Now, ensure that the config options are valid.
-	if err := opts.Validate(); err != nil {
-		errExit("configuration error: %v\n", err)
-	}
-
-	// If the user asked to output configuration, output it to stdout and exit
-	if flagOutputConfig {
-		buf, err := yaml.Marshal(opts)
-		if err != nil {
-			errExit("error YAML marshaling configuration: %v\n", err)
-		}
-		fmt.Print(string(buf))
-		return
-	}
-
-=======
->>>>>>> 331a767 (break up output to multiple files)
 	swagger, err := util.LoadSwagger(flag.Arg(0))
 	if err != nil {
 		errExit("error loading swagger spec in %s\n: %s", flag.Arg(0), err)
 	}
 
-<<<<<<< HEAD
-	code, err := codegen.Generate(swagger, opts.Configuration)
-	if err != nil {
-		errExit("error generating code: %s\n", err)
-	}
-
-	if opts.OutputFile != "" {
-		err = os.WriteFile(opts.OutputFile, []byte(code), 0644)
-		if err != nil {
-			errExit("error writing generated code to file: %s\n", err)
-		}
-	} else {
-		fmt.Print(code)
-	}
-=======
-	templates, err := loadTemplateOverrides(cfg.TemplatesDir)
+	templates, err := loadTemplateOverrides(cfg.OutputOptions.UserTemplates["default"])
 	if err != nil {
 		errExit("error loading template overrides: %s\n", err)
 	}
-	opts.UserTemplates = templates
+	opts.OutputOptions.UserTemplates = templates
 
 	opts.ImportMapping = cfg.ImportMapping
-	opts.OldMergeSchemas = cfg.OldAllOfOutput
 
-	if _, err := codegen.Generate(swagger, cfg.PackageName, opts); err != nil {
+	if _, err := codegen.Generate(swagger, cfg.PackageName, opts.Configuration); err != nil {
 		errExit("error generating code: %s\n", err)
 	}
-
->>>>>>> 331a767 (break up output to multiple files)
 }
 
 func loadTemplateOverrides(templatesDir string) (map[string]string, error) {
@@ -477,11 +416,15 @@ func generationTargets(cfg *codegen.Configuration, targets []string) error {
 			opts.GinServer = true
 		case "gorilla", "gorilla-server":
 			opts.GorillaServer = true
-		case "kit", "kit-server":
+		case "kit":
 			opts.KitServer = true
-		case "kit", "kit-service-stub":
 			opts.KitServiceStub = true
-		case "kit", "kit-client":
+			opts.KitClient = true
+		case "kit-server":
+			opts.KitServer = true
+		case "kit-service-stub":
+			opts.KitServiceStub = true
+		case "kit-client":
 			opts.KitClient = true
 		case "strict-server":
 			opts.Strict = true
@@ -539,4 +482,55 @@ func newConfigFromOldConfig(c oldConfiguration) configuration {
 		Configuration: opts,
 		OutputFile:    cfg.OutputFile,
 	}
+}
+
+// configFromFlags parses the flags and the config file. Anything which is
+// a zerovalue in the configuration file will be replaced with the flag
+// value, this means that the config file overrides flag values.
+func configFromFlags() *configuration {
+	var cfg configuration
+
+	// Load the configuration file first.
+	if flagConfigFile != "" {
+		f, err := os.Open(flagConfigFile)
+		if err != nil {
+			errExit("failed to open config file with error: %v\n", err)
+		}
+		defer f.Close()
+		err = yaml.NewDecoder(f).Decode(&cfg)
+		if err != nil {
+			errExit("error parsing config file: %v\n", err)
+		}
+	}
+
+	if cfg.PackageName == "" {
+		cfg.PackageName = flagPackageName
+	}
+
+	cfg.Generate.FromCommandLine(util.ParseCommandLineList(flagGenerate))
+
+	if cfg.OutputOptions.IncludeTags == nil {
+		cfg.OutputOptions.IncludeTags = util.ParseCommandLineList(flagIncludeTags)
+	}
+	if cfg.OutputOptions.ExcludeTags == nil {
+		cfg.OutputOptions.ExcludeTags = util.ParseCommandLineList(flagExcludeTags)
+	}
+	if cfg.OutputOptions.UserTemplates == nil {
+		cfg.OutputOptions.UserTemplates["default"] = flagTemplatesDir
+	}
+	if cfg.ImportMapping == nil && flagImportMapping != "" {
+		var err error
+		cfg.ImportMapping, err = util.ParseCommandlineMap(flagImportMapping)
+		if err != nil {
+			errExit("error parsing import-mapping: %s\n", err)
+		}
+	}
+	if cfg.OutputOptions.ExcludeSchemas == nil {
+		cfg.OutputOptions.ExcludeSchemas = util.ParseCommandLineList(flagExcludeSchemas)
+	}
+	if cfg.OutputFile == "" {
+		cfg.OutputFile = flagOutputFile
+	}
+
+	return &cfg
 }

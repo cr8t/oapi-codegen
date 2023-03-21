@@ -20,8 +20,9 @@ import (
 	"embed"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"log"
+	"os"
+	"path"
 	"runtime/debug"
 	"sort"
 	"strings"
@@ -37,10 +38,12 @@ const (
 	fileTransport         = "pkg/api/transport.gen.go"
 	fileEndpoints         = "pkg/api/endpoints.gen.go"
 	fileTypes             = "pkg/api/types.gen.go"
+	fileSpec              = "pkg/api/spec.gen.go"
 	fileMiddlewareLogging = "pkg/api/middleware-logging.gen.go"
 	fileMiddlewareTracing = "pkg/api/middleware-tracing.gen.go"
 	fileMiddlewareMetrics = "pkg/api/middleware-metrics.gen.go"
 	fileMiddlewareChaos   = "pkg/api/middleware-chaos.gen.go"
+	fileServerStub        = "gen/server/server.stub.go"
 	fileServiceStub       = "gen/service/service.stub.go"
 	fileClientStub        = "gen/client/client.stub.go"
 )
@@ -113,7 +116,7 @@ func constructImportMapping(importMapping map[string]string) importMap {
 // Generate uses the Go templating engine to generate all of our server wrappers from
 // the descriptions we've built up above from the schema objects.
 // opts defines
-func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string]string, error) {
+func Generate(spec *openapi3.T, packageName string, opts Configuration) (map[string]string, error) {
 	// This is global state
 	globalState.options = opts
 	globalState.spec = spec
@@ -148,7 +151,7 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 	for _, tpl := range t.Templates() {
 		if _, ok := opts.OutputOptions.UserTemplates[tpl.Name()]; ok {
 			utpl := t.New(tpl.Name())
-			if _, err := utpl.Parse(opts.UserTemplates[tpl.Name()]); err != nil {
+			if _, err := utpl.Parse(opts.OutputOptions.UserTemplates[tpl.Name()]); err != nil {
 				return nil, fmt.Errorf("error parsing user-provided template %q: %w", tpl.Name(), err)
 			}
 		}
@@ -157,6 +160,11 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 	ops, err := OperationDefinitions(spec)
 	if err != nil {
 		return nil, fmt.Errorf("error creating operation definitions: %w", err)
+	}
+
+	xGoTypeImports, err := OperationImports(ops)
+	if err != nil {
+		return nil, fmt.Errorf("error getting Go imports: %w", err)
 	}
 
 	importMapping["httptransport"] = goImport{
@@ -193,7 +201,7 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 		Name: "kitprometheus",
 		Path: "github.com/go-kit/kit/metrics/prometheus",
 	}
-	typeDefinitions, err := GenerateKitTypeDefinitions(t, swagger, ops, opts.ExcludeSchemas)
+	typeDefinitions, err := GenerateKitTypeDefinitions(t, spec, ops, opts.OutputOptions.ExcludeSchemas)
 	if err != nil {
 		return nil, fmt.Errorf("error generating type definitions: %w", err)
 	}
@@ -203,54 +211,94 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 		return nil, fmt.Errorf("error generating constants: %w", err)
 	}
 
+	clientOut, err := GenerateClient(t, ops)
+	if err != nil {
+		return nil, fmt.Errorf("error generating client: %w", err)
+	}
+
+	clientWithResponsesOut, err := GenerateClientWithResponses(t, ops)
+	if err != nil {
+		return nil, fmt.Errorf("error generating client with responses: %w", err)
+	}
+
+	inlinedSpec, err := GenerateInlinedSpec(t, importMapping, spec)
+	if err != nil {
+		return nil, fmt.Errorf("error writing inlined spec: %w", err)
+	}
+
 	kitServiceOut, err := GenerateKitService(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit service: %w", err)
 	}
 
 	kitLoggerOut, err := GenerateKitLogger(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit logger: %w", err)
 	}
 
 	kitTransportOut, err := GenerateKitTransport(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit transport: %w", err)
 	}
 
 	kitEndpointsOut, err := GenerateKitEndpoints(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit endpoints: %w", err)
 	}
 
 	kitMiddlewareLoggingOut, err := GenerateKitMiddlewareLogging(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit logging middleware: %w", err)
 	}
 
 	kitMiddlewareTracingOut, err := GenerateKitMiddlewareTracing(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit tracing middleware: %w", err)
 	}
 
 	kitMiddlewareMetricsOut, err := GenerateKitMiddlewareMetrics(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit metrics middleware: %w", err)
 	}
 
 	kitMiddlewareChaosOut, err := GenerateKitMiddlewareChaos(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit chaos middleware: %w", err)
 	}
 
 	kitServiceStubOut, err := GenerateKitServiceStub(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit service stub: %w", err)
 	}
 
 	kitClientOut, err := GenerateKitClient(t, ops)
 	if err != nil {
-		return nil, fmt.Errorf("error generating Go handlers for Paths: %w", err)
+		return nil, fmt.Errorf("error generating go-kit client: %w", err)
+	}
+
+	echoServerOut, err := GenerateEchoServer(t, ops)
+	if err != nil {
+		return nil, fmt.Errorf("error generating echo server: %w", err)
+	}
+
+	chiServerOut, err := GenerateChiServer(t, ops)
+	if err != nil {
+		return nil, fmt.Errorf("error generating chi server: %w", err)
+	}
+
+	ginServerOut, err := GenerateGinServer(t, ops)
+	if err != nil {
+		return nil, fmt.Errorf("error generating gin server: %w", err)
+	}
+
+	gorillaServerOut, err := GenerateGorillaServer(t, ops)
+	if err != nil {
+		return nil, fmt.Errorf("error generating gorilla server: %w", err)
+	}
+
+	strictServerOut, err := GenerateStrictServer(t, ops, opts)
+	if err != nil {
+		return nil, fmt.Errorf("error generating strict server: %w", err)
 	}
 
 	bufs := map[string]*bytes.Buffer{}
@@ -319,80 +367,73 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 	}
 
 	if opts.Generate.Client {
-		_, err = w.WriteString(clientOut)
+		_, err = writers[fileClientStub].WriteString(clientOut)
 		if err != nil {
 			return nil, fmt.Errorf("error writing client: %w", err)
 		}
-		_, err = w.WriteString(clientWithResponsesOut)
+
+		_, err = writers[fileClientStub].WriteString(clientWithResponsesOut)
 		if err != nil {
 			return nil, fmt.Errorf("error writing client: %w", err)
 		}
 	}
 
 	if opts.Generate.EchoServer {
-		_, err = w.WriteString(echoServerOut)
+		_, err = writers[fileServerStub].WriteString(echoServerOut)
 		if err != nil {
 			return nil, fmt.Errorf("error writing server path handlers: %w", err)
 		}
 	}
 
 	if opts.Generate.ChiServer {
-		_, err = w.WriteString(chiServerOut)
+		_, err = writers[fileTransport].WriteString(chiServerOut)
 		if err != nil {
 			return nil, fmt.Errorf("error writing server path handlers: %w", err)
 		}
 	}
 
 	if opts.Generate.GinServer {
-		_, err = w.WriteString(ginServerOut)
+		_, err = writers[fileServerStub].WriteString(ginServerOut)
 		if err != nil {
 			return nil, fmt.Errorf("error writing server path handlers: %w", err)
 		}
 	}
 
 	if opts.Generate.GorillaServer {
-		_, err = w.WriteString(gorillaServerOut)
+		_, err = writers[fileServerStub].WriteString(gorillaServerOut)
 		if err != nil {
 			return nil, fmt.Errorf("error writing server path handlers: %w", err)
 		}
 	}
 
-	if opts.GenerateKitServer || opts.GenerateKitServiceStub {
-		_, err = w.WriteString(kitServerOut)
-		if err != nil {
-			return nil, fmt.Errorf("error writing server path handlers: %w", err)
-		}
-	}
-
-	if opts.GenerateKitServiceStub {
-		_, err = w.WriteString(kitServiceStubOut)
+	if opts.Generate.KitServer || opts.Generate.KitServiceStub {
+		_, err = writers[fileServerStub].WriteString(kitServiceOut)
 		if err != nil {
 			return nil, fmt.Errorf("error writing server path handlers: %w", err)
 		}
 	}
 
 	if opts.Generate.KitClient {
-		_, err = w.WriteString(kitClientOut)
+		_, err = writers[fileClientStub].WriteString(kitClientOut)
 		if err != nil {
 			return nil, fmt.Errorf("error writing server path handlers: %w", err)
 		}
 	}
 
 	if opts.Generate.Strict {
-		_, err = w.WriteString(strictServerOut)
+		_, err = writers[fileServerStub].WriteString(strictServerOut)
 		if err != nil {
 			return nil, fmt.Errorf("error writing server path handlers: %w", err)
 		}
 	}
 
 	if opts.Generate.EmbeddedSpec {
-		_, err = w.WriteString(inlinedSpec)
+		_, err = writers[fileSpec].WriteString(inlinedSpec)
 		if err != nil {
 			return nil, fmt.Errorf("error writing inlined spec: %w", err)
 		}
 	}
 
-	err = w.Flush()
 	_, err = writers[fileLogger].WriteString(kitLoggerOut)
 	if err != nil {
 		return nil, fmt.Errorf("error writing server path handlers: %w", err)
@@ -429,7 +470,7 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 	}
 
 	for file, w := range writers {
-		if err := formatAndWrite(file, w, bufs[file]); err != nil {
+		if err := formatAndWrite(file, w, bufs[file], opts); err != nil {
 			return nil, err
 		}
 	}
@@ -448,10 +489,12 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 	if err != nil {
 		return nil, fmt.Errorf("error generating imports: %w", err)
 	}
+
 	_, err = writersStubs[fileServiceStub].WriteString(importsOut)
 	if err != nil {
 		return nil, fmt.Errorf("error writing server path handlers: %w", err)
 	}
+
 	_, err = writersStubs[fileServiceStub].WriteString(kitServiceStubOut)
 	if err != nil {
 		return nil, fmt.Errorf("error writing server path handlers: %w", err)
@@ -463,16 +506,18 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 		return nil, fmt.Errorf("error generating imports: %w", err)
 	}
 	_, err = writersStubs[fileClientStub].WriteString(importsOut)
+
 	if err != nil {
 		return nil, fmt.Errorf("error writing server path handlers: %w", err)
 	}
+
 	_, err = writersStubs[fileClientStub].WriteString(kitClientOut)
 	if err != nil {
 		return nil, fmt.Errorf("error writing server path handlers: %w", err)
 	}
 
 	for file, w := range writersStubs {
-		if err := formatAndWrite(file, w, bufsStubs[file]); err != nil {
+		if err := formatAndWrite(file, w, bufsStubs[file], opts); err != nil {
 			return nil, err
 		}
 	}
@@ -480,7 +525,7 @@ func Generate(swagger *openapi3.T, packageName string, opts Options) (map[string
 	return nil, nil
 }
 
-func formatAndWrite(file string, w *bufio.Writer, buf *bytes.Buffer) error {
+func formatAndWrite(file string, w *bufio.Writer, buf *bytes.Buffer, opts Configuration) error {
 	if err := w.Flush(); err != nil {
 		return fmt.Errorf("error flushing output buffer for %s: %w", file, err)
 	}
@@ -493,7 +538,7 @@ func formatAndWrite(file string, w *bufio.Writer, buf *bytes.Buffer) error {
 	// The generation code produces unindented horrors. Use the Go Imports
 	// to make it all pretty.
 	if opts.OutputOptions.SkipFmt {
-		return goCode, nil
+		return nil
 	}
 
 	outBytes, err := imports.Process(file, []byte(goCode), nil)
@@ -502,16 +547,15 @@ func formatAndWrite(file string, w *bufio.Writer, buf *bytes.Buffer) error {
 		outBytes = []byte(goCode)
 	}
 
-	outBytes, err := imports.Process(opts.PackageName+".go", []byte(goCode), nil)
-	if err != nil {
-		return "", fmt.Errorf("error formatting Go code %s: %w", goCode, err)
+	if err := os.MkdirAll(path.Dir(file), 0644); err != nil {
+		return fmt.Errorf("error creating parent directories")
 	}
 
-	if err := ioutil.WriteFile(file, []byte(outBytes), 0644); err != nil {
+	if err := os.WriteFile(file, []byte(outBytes), 0644); err != nil {
 		return fmt.Errorf("error writing generated go code to %s: %w", file, err)
 	}
 
-	return string(outBytes), nil
+	return nil
 }
 
 func GenerateTypeDefinitions(t *template.Template, swagger *openapi3.T, ops []OperationDefinition, excludeSchemas []string) (string, error) {
@@ -550,6 +594,11 @@ func GenerateTypeDefinitions(t *template.Template, swagger *openapi3.T, ops []Op
 		enumTypes = append(enumTypes, op.TypeDefinitions...)
 	}
 
+	typesOut, err := GenerateTypes(t, allTypes)
+	if err != nil {
+		return "", fmt.Errorf("error generating Go types: %w", err)
+	}
+
 	operationsOut, err := GenerateTypesForOperations(t, ops)
 	if err != nil {
 		return "", fmt.Errorf("error generating Go types for component request bodies: %w", err)
@@ -559,8 +608,6 @@ func GenerateTypeDefinitions(t *template.Template, swagger *openapi3.T, ops []Op
 	if err != nil {
 		return "", fmt.Errorf("error generating code for type enums: %w", err)
 	}
-
-	return nil
 
 	allOfBoilerplate, err := GenerateAdditionalPropertyBoilerplate(t, allTypes)
 	if err != nil {
@@ -940,8 +987,15 @@ func GenerateEnums(t *template.Template, types []TypeDefinition) (string, error)
 	return GenerateTemplates([]string{"constants.tmpl"}, t, Constants{EnumDefinitions: enums})
 }
 
-// GenerateImports generates our import statements and package definition.
-func GenerateImports(t *template.Template, externalImports []string, packageName string) (string, error) {
+type Context struct {
+	ExternalImports   []string
+	PackageName       string
+	ModuleName        string
+	Version           string
+	AdditionalImports []AdditionalImport
+}
+
+func getHeaderContext(packageName string, externalImports []string) Context {
 	// Read build version for incorporating into generated files
 	// Unit tests have ok=false, so we'll just use "unknown" for the
 	// version if we can't read this.
@@ -957,26 +1011,24 @@ func GenerateImports(t *template.Template, externalImports []string, packageName
 		}
 	}
 
-	context := struct {
-		ExternalImports   []string
-		PackageName       string
-		ModuleName        string
-		Version           string
-		AdditionalImports []AdditionalImport
-	}{
+	return Context{
 		ExternalImports:   externalImports,
 		PackageName:       packageName,
 		ModuleName:        modulePath,
 		Version:           moduleVersion,
 		AdditionalImports: globalState.options.AdditionalImports,
 	}
+}
 
+// GenerateImports generates our import statements and package definition.
+func GenerateImports(t *template.Template, externalImports []string, packageName string) (string, error) {
+	context := getHeaderContext(packageName, externalImports)
 	return GenerateTemplates([]string{"imports.tmpl"}, t, context)
 }
 
 // / GeneratePkgDoc generates documentation for the package
 func GeneratePkgDoc(t *template.Template, externalImports []string, packageName string) (string, error) {
-	context := getHeaderContext(packageName)
+	context := getHeaderContext(packageName, externalImports)
 	return GenerateTemplates([]string{"package-doc.tmpl"}, t, context)
 }
 

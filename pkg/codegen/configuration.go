@@ -3,6 +3,7 @@ package codegen
 import (
 	"errors"
 	"reflect"
+	"strings"
 )
 
 type AdditionalImport struct {
@@ -125,4 +126,39 @@ func (o Configuration) Validate() error {
 		return errors.New("only one server type is supported at a time")
 	}
 	return nil
+}
+
+func (g *GenerateOptions) FromCommandLine(list []string) {
+	for _, item := range list {
+		switch strings.ToLower(item) {
+		case "chi", "chi-server":
+			g.ChiServer = true
+		case "echo", "echo-server":
+			g.EchoServer = true
+		case "gin", "gin-server":
+			g.GinServer = true
+		case "gorilla", "gorilla-server":
+			g.GorillaServer = true
+		case "kit":
+			g.KitServer = true
+			g.KitServiceStub = true
+			g.KitClient = true
+		case "kit-server":
+			g.KitServer = true
+		case "kit-service-stub":
+			g.KitServiceStub = true
+		case "kit-client":
+			g.KitClient = true
+		case "strict", "strict-server":
+			g.Strict = true
+		case "client":
+			g.Client = true
+		case "models":
+			g.Models = true
+		case "embedded-spec", "spec":
+			g.EmbeddedSpec = true
+		default:
+			continue
+		}
+	}
 }
