@@ -516,7 +516,7 @@ func configFromFlags() *configuration {
 		cfg.OutputOptions.ExcludeTags = util.ParseCommandLineList(flagExcludeTags)
 	}
 	if cfg.OutputOptions.UserTemplates == nil {
-		cfg.OutputOptions.UserTemplates["default"] = flagTemplatesDir
+		cfg.OutputOptions.UserTemplates = map[string]string{"default": flagTemplatesDir}
 	}
 	if cfg.ImportMapping == nil && flagImportMapping != "" {
 		var err error
