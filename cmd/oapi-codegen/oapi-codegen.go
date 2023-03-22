@@ -90,7 +90,7 @@ func main() {
 	// All flags below are deprecated, and will be removed in a future release. Please do not
 	// update their behavior.
 	flag.StringVar(&flagGenerate, "generate", "types,client,server,spec",
-		`Comma-separated list of code to generate; valid options: "types", "client", "chi-server", "server", "gin", "gorilla", "spec", "skip-fmt", "skip-prune"`)
+		`Comma-separated list of code to generate; valid options: "types", "client", "chi-server", "server", "gin", "gorilla", "kit", "kit-client", "kit-endpoints", "kit-logger", "kit-middleware", "kit-service", "kit-service-stub", "kit-transport", "multi-file", "spec", "skip-fmt", "skip-prune"`)
 	flag.StringVar(&flagIncludeTags, "include-tags", "", "Only include operations with the given tags. Comma-separated list of tags.")
 	flag.StringVar(&flagExcludeTags, "exclude-tags", "", "Exclude operations that are tagged with the given tags. Comma-separated list of tags.")
 	flag.StringVar(&flagTemplatesDir, "templates", "", "Path to directory containing user templates")
@@ -271,6 +271,8 @@ func main() {
 		if err != nil {
 			errExit("error writing generated code to file: %s\n", err)
 		}
+	} else if opts.Configuration.Generate.MultiFile {
+		fmt.Println("Successfully generated code to multiple files")
 	} else {
 		fmt.Print(code)
 	}
@@ -459,6 +461,30 @@ func generationTargets(cfg *codegen.Configuration, targets []string) error {
 			cfg.OutputOptions.SkipFmt = true
 		case "skip-prune":
 			cfg.OutputOptions.SkipPrune = true
+		case "kit":
+			opts.KitClient = true
+			opts.KitEndpoints = true
+			opts.KitLogger = true
+			opts.KitMiddleware = true
+			opts.KitService = true
+			opts.KitServiceStub = true
+			opts.KitTransport = true
+		case "kit-client":
+			opts.KitClient = true
+		case "kit-endpoints":
+			opts.KitEndpoints = true
+		case "kit-logger":
+			opts.KitLogger = true
+		case "kit-middleware":
+			opts.KitMiddleware = true
+		case "kit-service":
+			opts.KitService = true
+		case "kit-service-stub":
+			opts.KitServiceStub = true
+		case "kit-transport":
+			opts.KitTransport = true
+		case "multi", "multi-file":
+			opts.MultiFile = true
 		default:
 			return fmt.Errorf("unknown generate option %q", opt)
 		}
