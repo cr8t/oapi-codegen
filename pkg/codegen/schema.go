@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
 
 	"github.com/getkin/kin-openapi/openapi3"
 )
@@ -102,6 +103,23 @@ func (p Property) GoTypeDef() string {
 		typeDef = "*" + typeDef
 	}
 	return typeDef
+}
+
+func (p Property) GoVariableName() string {
+	name := LowercaseFirstCharacter(p.GoFieldName())
+	if name == "iD" {
+		name = "id"
+	}
+	if name == "uRI" {
+		name = "uri"
+	}
+	if IsGoKeyword(name) {
+		name = "p" + UppercaseFirstCharacter(name)
+	}
+	if unicode.IsNumber([]rune(name)[0]) {
+		name = "n" + name
+	}
+	return name
 }
 
 // EnumDefinition holds type information for enum
