@@ -22,14 +22,22 @@ type Configuration struct {
 
 // GenerateOptions specifies which supported output formats to generate.
 type GenerateOptions struct {
-	ChiServer     bool `yaml:"chi-server,omitempty"`     // ChiServer specifies whether to generate chi server boilerplate
-	EchoServer    bool `yaml:"echo-server,omitempty"`    // EchoServer specifies whether to generate echo server boilerplate
-	GinServer     bool `yaml:"gin-server,omitempty"`     // GinServer specifies whether to generate gin server boilerplate
-	GorillaServer bool `yaml:"gorilla-server,omitempty"` // GorillaServer specifies whether to generate Gorilla server boilerplate
-	Strict        bool `yaml:"strict-server,omitempty"`  // Strict specifies whether to generate strict server wrapper
-	Client        bool `yaml:"client,omitempty"`         // Client specifies whether to generate client boilerplate
-	Models        bool `yaml:"models,omitempty"`         // Models specifies whether to generate type definitions
-	EmbeddedSpec  bool `yaml:"embedded-spec,omitempty"`  // Whether to embed the swagger spec in the generated code
+	ChiServer      bool `yaml:"chi-server,omitempty"`       // ChiServer specifies whether to generate chi server boilerplate
+	EchoServer     bool `yaml:"echo-server,omitempty"`      // EchoServer specifies whether to generate echo server boilerplate
+	GinServer      bool `yaml:"gin-server,omitempty"`       // GinServer specifies whether to generate gin server boilerplate
+	GorillaServer  bool `yaml:"gorilla-server,omitempty"`   // GorillaServer specifies whether to generate Gorilla server boilerplate
+	Strict         bool `yaml:"strict-server,omitempty"`    // Strict specifies whether to generate strict server wrapper
+	Client         bool `yaml:"client,omitempty"`           // Client specifies whether to generate client boilerplate
+	Models         bool `yaml:"models,omitempty"`           // Models specifies whether to generate type definitions
+	EmbeddedSpec   bool `yaml:"embedded-spec,omitempty"`    // Whether to embed the swagger spec in the generated code
+	KitClient      bool `yaml:"kit-client,omitempty"`       // KitClient specifies whether to generate Kit client stub boilerplate
+	KitEndpoints   bool `yaml:"kit-endpoints,omitempty"`    // KitClient specifies whether to generate Kit endpoints boilerplate
+	KitLogger      bool `yaml:"kit-logger,omitempty"`       // KitClient specifies whether to generate Kit logger boilerplate
+	KitMiddleware  bool `yaml:"kit-middleware,omitempty"`   // KitClient specifies whether to generate Kit middleware boilerplate
+	KitService     bool `yaml:"kit-service,omitempty"`      // KitService specifies whether to generate Kit service boilerplate
+	KitServiceStub bool `yaml:"kit-service-stub,omitempty"` // KitServer specifies whether to generate Kit service stub boilerplate
+	KitTransport   bool `yaml:"kit-transport,omitempty"`    // KitService specifies whether to generate Kit transport boilerplate
+	MultiFile      bool `yaml:"multi-file,omitempty"`       // MultiFile specifies whether to write generated code to multiple files (default is to write to a single file)
 }
 
 // CompatibilityOptions specifies backward compatibility settings for the
